@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #16182B;
+  color: #E9E6DD;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+textarea, input {
+  caret-color: #5FB49C;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

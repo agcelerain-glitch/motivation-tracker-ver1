@@ -1,0 +1,130 @@
+'use client';
+import { AnimatePresence } from 'framer-motion';
+import { COLORS } from '@/config/design';
+import { shouldShowNudge } from '@/lib/carryOver';
+import CarryOverNudge from './CarryOverNudge';
+import type { TomorrowPlan } from '@/types/entry';
+
+interface Props {
+  value: TomorrowPlan;
+  prevTomorrow: TomorrowPlan | null;
+  onChange: (v: TomorrowPlan) => void;
+  onNext: () => void;
+  onSkip: () => void;
+}
+
+export default function TomorrowStep({ value, prevTomorrow, onChange, onNext, onSkip }: Props) {
+  const showNudge = !value.nudgeShown && shouldShowNudge(prevTomorrow);
+
+  const handleContinue = () => {
+    onChange({
+      ...value,
+      text: prevTomorrow?.text ?? value.text,
+      carriedOver: true,
+      carryOverCount: (prevTomorrow?.carryOverCount ?? 0) + 1,
+      nudgeShown: true,
+      nudgeChoice: 'continue',
+    });
+  };
+
+  const handleBreakdown = () => {
+    onChange({
+      ...value,
+      text: prevTomorrow?.text ?? '',
+      carriedOver: false,
+      carryOverCount: 0,
+      nudgeShown: true,
+      nudgeChoice: 'breakdown',
+    });
+  };
+
+  const handleSwitch = () => {
+    onChange({
+      ...value,
+      text: null,
+      carriedOver: false,
+      carryOverCount: 0,
+      nudgeShown: true,
+      nudgeChoice: 'switch',
+    });
+  };
+
+  const handleCarryOver = () => {
+    onChange({
+      ...value,
+      text: prevTomorrow?.text ?? '',
+      carriedOver: true,
+      carryOverCount: (prevTomorrow?.carryOverCount ?? 0) + 1,
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0 }}>
+        明日のやること
+      </p>
+
+      <AnimatePresence>
+        {showNudge && (
+          <CarryOverNudge
+            count={prevTomorrow!.carryOverCount}
+            onContinue={handleContinue}
+            onBreakdown={handleBreakdown}
+            onSwitch={handleSwitch}
+            onClose={() => onChange({ ...value, nudgeShown: true })}
+          />
+        )}
+      </AnimatePresence>
+
+      {prevTomorrow?.text && !value.carriedOver && !value.nudgeShown && (
+        <button
+          onClick={handleCarryOver}
+          style={{
+            background: '#2A2D45', border: `1px solid ${COLORS.sprout}`,
+            color: COLORS.sprout, borderRadius: 8, padding: '10px 14px',
+            fontSize: 13, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New',
+            textAlign: 'left',
+          }}
+        >
+          昨日のやることを続ける：{prevTomorrow.text}
+        </button>
+      )}
+
+      <textarea
+        value={value.text ?? ''}
+        onChange={e => onChange({ ...value, text: e.target.value || null })}
+        placeholder="明日やること"
+        rows={4}
+        style={{
+          background: '#2A2D45', border: 'none', borderRadius: 8,
+          color: COLORS.chalk, padding: '10px 12px', fontSize: 14,
+          fontFamily: 'Zen Kaku Gothic New', resize: 'vertical', outline: 'none',
+          lineHeight: 1.6,
+        }}
+      />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+        <button
+          onClick={onSkip}
+          style={{
+            background: 'none', border: `1px solid #3A3D55`, color: COLORS.muted,
+            borderRadius: 8, padding: '12px', fontSize: 14, cursor: 'pointer',
+            fontFamily: 'Zen Kaku Gothic New',
+          }}
+        >
+          今日はスキップ
+        </button>
+        <button
+          onClick={onNext}
+          style={{
+            background: COLORS.sprout, border: 'none', color: COLORS.ink,
+            borderRadius: 8, padding: '14px', fontSize: 16, cursor: 'pointer',
+            fontFamily: 'Zen Kaku Gothic New', fontWeight: 700,
+          }}
+        >
+          送信する
+        </button>
+      </div>
+    </div>
+  );
+}
