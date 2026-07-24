@@ -1,5 +1,5 @@
 'use client';
-import { COLORS, BAND_COLORS } from '@/config/design';
+import { COLORS } from '@/config/design';
 import { AXES } from '@/config/axes';
 import type { AxisDivergenceResult } from '@/lib/analysis';
 import type { Entry } from '@/types/entry';

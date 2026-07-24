@@ -8,7 +8,6 @@ import { useAuthState } from '@/lib/hooks/useAuthState';
 import { useRouter } from 'next/navigation';
 import { COLORS } from '@/config/design';
 import { groupByHighLow, computeAxisDivergence } from '@/lib/analysis';
-import { AXES } from '@/config/axes';
 import type { Entry } from '@/types/entry';
 import CalendarHeatmap from '@/components/review/CalendarHeatmap';
 import TrendChart from '@/components/review/TrendChart';

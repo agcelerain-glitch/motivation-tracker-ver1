@@ -1,6 +1,5 @@
 'use client';
 import { useRef, useCallback, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import type { Band } from '@/types/entry';
 import { BAND_COLORS } from '@/config/design';
 
@@ -15,7 +14,6 @@ interface Props {
 
 const ARC_START_DEG = 225;
 const ARC_END_DEG   = 315;
-const GAP_HALF      = 45;
 const TOTAL_ARC     = 270;
 const BANDS         = 6;
 
@@ -47,6 +45,7 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
   const isDraggingArc = useRef(false);
   const pointerDownRef = useRef<{ time: number; x: number; y: number } | null>(null);
   const [hoveredBand, setHoveredBand] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const SIZE = 320;
   const CX   = SIZE / 2;
@@ -74,11 +73,13 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
     const dx = (e.clientX - rect.left) * scale - CX;
     const dy = (e.clientY - rect.top)  * scale - CY;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    isDraggingArc.current = dist > R - STROKE / 2 - 8 && dist < R + STROKE / 2 + 8;
+    const onArc = dist > R - STROKE / 2 - 8 && dist < R + STROKE / 2 + 8;
+    isDraggingArc.current = onArc;
+    setIsDragging(onArc);
     dragOriginRef.current = { x: e.clientX, y: e.clientY };
     pointerDownRef.current = { time: Date.now(), x: e.clientX, y: e.clientY };
 
-    if (isDraggingArc.current) {
+    if (onArc) {
       const idx = angleToIndex(angle);
       if (idx >= 0) { setHoveredBand(idx); }
       (e.target as Element).setPointerCapture(e.pointerId);
@@ -112,12 +113,13 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
       onChange((hoveredBand + 1) as Band);
     }
     isDraggingArc.current = false;
+    setIsDragging(false);
     dragOriginRef.current = null;
     pointerDownRef.current = null;
   }, [hoveredBand, onChange]);
 
   const selectedIdx = value !== null && value !== undefined ? value - 1 : null;
-  const displayIdx  = isDraggingArc.current ? hoveredBand : selectedIdx;
+  const displayIdx  = isDragging ? hoveredBand : selectedIdx;
 
   const bandSegments = Array.from({ length: BANDS }, (_, i) => {
     const startDeg = ARC_START_DEG + i * (TOTAL_ARC / BANDS);

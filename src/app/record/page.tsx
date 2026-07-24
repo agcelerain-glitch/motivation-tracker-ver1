@@ -18,6 +18,7 @@ import TagNoteInput from '@/components/record/TagNoteInput';
 import RadialBandPicker from '@/components/record/RadialBandPicker';
 import ReflectionStep from '@/components/record/ReflectionStep';
 import TomorrowStep from '@/components/record/TomorrowStep';
+import ReviewSubmit from '@/components/record/ReviewSubmit';
 import type { AxisId, Band, Level, Emotion, TomorrowPlan } from '@/types/entry';
 
 export default function RecordPage() {
@@ -26,12 +27,13 @@ export default function RecordPage() {
   const draft = useDraftStore();
   const [prevTomorrow, setPrevTomorrow] = useState<TomorrowPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const quickAxes = AXES.filter(a => a.mode === 'quick');
   const deepAxes  = AXES.filter(a => a.mode === 'deep');
   const currentAxes = draft.mode === 'quick' ? quickAxes : [...quickAxes, ...deepAxes];
 
+  // TOTAL = 入力ステップ数（0〜TOTAL-1 が入力ステップ、TOTAL が確認画面）
   const TOTAL = draft.mode === 'quick' ? 10 : 15;
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function RecordPage() {
     getEntry(user.uid, prev).then(e => setPrevTomorrow(e?.tomorrow ?? null));
   }, [user]);
 
-  const goNext = () => draft.setStep(Math.min(draft.currentStep + 1, TOTAL));
+  const goNext = () => draft.setStep(draft.currentStep + 1);
   const goBack = () => {
     if (draft.currentStep === 0) { router.push('/'); return; }
     draft.setStep(draft.currentStep - 1);
@@ -49,6 +51,7 @@ export default function RecordPage() {
   const handleSubmit = async () => {
     if (!user) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       await upsertEntry(user.uid, {
         logicalDate: getLogicalDate(),
@@ -64,7 +67,11 @@ export default function RecordPage() {
         tomorrow: draft.tomorrow,
       });
       draft.reset();
-      setSubmitted(true);
+      router.push('/review');
+    } catch (e) {
+      console.error('[upsertEntry error]', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      setSubmitError(`記録の保存に失敗しました。\n${msg}\n\nネットワーク接続を確認してもう一度お試しください。`);
     } finally {
       setSubmitting(false);
     }
@@ -83,27 +90,42 @@ export default function RecordPage() {
     return null;
   }
 
-  if (submitted) {
+  const step = draft.currentStep;
+
+  // TOTAL 以上のステップ = 確認・送信画面（進捗バー外）
+  if (step >= TOTAL) {
     return (
-      <div style={{ minHeight: '100dvh', background: COLORS.ink, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <p style={{ color: COLORS.chalk, fontSize: 24, fontFamily: 'Shippori Mincho' }}>記録しました</p>
-        <button onClick={() => router.push('/')} style={{ background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '12px 24px', fontSize: 16, cursor: 'pointer' }}>
-          ホームへ
-        </button>
-      </div>
+      <ReviewSubmit
+        submitting={submitting}
+        error={submitError}
+        onBack={() => draft.setStep(TOTAL - 1)}
+        onConfirm={handleSubmit}
+      />
     );
   }
-
-  const step = draft.currentStep;
 
   const renderStep = () => {
     if (step === 0) {
       return (
         <StepShell step={1} total={TOTAL} onBack={goBack}>
-          <LevelPicker label="今日の達成度" value={draft.achievement} onChange={(v: Level) => { draft.setAchievement(v); goNext(); }} />
+          <LevelPicker
+            label="今日の達成度"
+            value={draft.achievement}
+            onChange={(v: Level) => { draft.setAchievement(v); goNext(); }}
+          />
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
             {(['quick', 'deep'] as const).map(m => (
-              <button key={m} onClick={() => draft.setMode(m)} style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1px solid ${draft.mode === m ? COLORS.sprout : '#3A3D55'}`, background: draft.mode === m ? '#2A3A35' : 'transparent', color: draft.mode === m ? COLORS.sprout : COLORS.muted, fontSize: 13, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}>
+              <button
+                key={m}
+                onClick={() => draft.setMode(m)}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: 8,
+                  border: `1px solid ${draft.mode === m ? COLORS.sprout : '#3A3D55'}`,
+                  background: draft.mode === m ? '#2A3A35' : 'transparent',
+                  color: draft.mode === m ? COLORS.sprout : COLORS.muted,
+                  fontSize: 13, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New',
+                }}
+              >
                 {m === 'quick' ? 'クイック (10問)' : 'じっくり (15問)'}
               </button>
             ))}
@@ -115,7 +137,11 @@ export default function RecordPage() {
     if (step === 1) {
       return (
         <StepShell step={2} total={TOTAL} onBack={goBack}>
-          <LevelPicker label="今日の満足度" value={draft.satisfaction} onChange={(v: Level) => { draft.setSatisfaction(v); goNext(); }} />
+          <LevelPicker
+            label="今日の満足度"
+            value={draft.satisfaction}
+            onChange={(v: Level) => { draft.setSatisfaction(v); goNext(); }}
+          />
         </StepShell>
       );
     }
@@ -125,7 +151,10 @@ export default function RecordPage() {
         <StepShell step={3} total={TOTAL} onBack={goBack}>
           <p style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', marginBottom: 20 }}>喜怒哀楽</p>
           <EmotionPicker value={draft.emotions} onChange={(v: Emotion[]) => draft.setEmotions(v)} />
-          <button onClick={goNext} style={{ marginTop: 24, background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '14px', fontSize: 16, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}>
+          <button
+            onClick={goNext}
+            style={{ marginTop: 24, background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '14px', fontSize: 16, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}
+          >
             次へ
           </button>
         </StepShell>
@@ -142,7 +171,10 @@ export default function RecordPage() {
             onChange={v => draft.setDid(v)}
             yesterdayTomorrow={prevTomorrow?.text ?? null}
           />
-          <button onClick={goNext} style={{ marginTop: 16, background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '14px', fontSize: 16, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}>
+          <button
+            onClick={goNext}
+            style={{ marginTop: 16, background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '14px', fontSize: 16, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}
+          >
             次へ
           </button>
         </StepShell>
@@ -158,7 +190,10 @@ export default function RecordPage() {
             value={draft.didnt}
             onChange={v => draft.setDidnt(v)}
           />
-          <button onClick={goNext} style={{ marginTop: 16, background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '14px', fontSize: 16, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}>
+          <button
+            onClick={goNext}
+            style={{ marginTop: 16, background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '14px', fontSize: 16, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}
+          >
             次へ
           </button>
         </StepShell>
@@ -211,19 +246,14 @@ export default function RecordPage() {
             value={draft.tomorrow}
             prevTomorrow={prevTomorrow}
             onChange={v => draft.setTomorrow(v)}
-            onNext={handleSubmit}
-            onSkip={() => { draft.setTomorrow({ ...draft.tomorrow, skipped: true }); handleSubmit(); }}
+            onNext={goNext}
+            onSkip={() => { draft.setTomorrow({ ...draft.tomorrow, skipped: true }); goNext(); }}
           />
-          {submitting && <p style={{ color: COLORS.muted, textAlign: 'center', marginTop: 8 }}>送信中…</p>}
         </StepShell>
       );
     }
 
-    return (
-      <div style={{ minHeight: '100dvh', background: COLORS.ink, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: COLORS.muted }}>完了</span>
-      </div>
-    );
+    return null;
   };
 
   return (

@@ -15,17 +15,17 @@ import type { Entry } from '@/types/entry';
 export default function HomePage() {
   const router = useRouter();
   const { user, loading, authError: initError } = useAuthState();
-  const [todayEntry, setTodayEntry] = useState<Entry | null | undefined>(undefined);
+  const [todayEntry, setTodayEntry] = useState<Entry | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
   const configChecks = checkFirebaseConfig();
   const configOk = allConfigOk();
 
   useEffect(() => {
-    if (!user) { setTodayEntry(null); return; }
-    getEntry(user.uid, getLogicalDate()).then(setTodayEntry).catch(e => {
-      console.error('Firestoreエラー:', e);
-    });
+    if (!user) return;
+    getEntry(user.uid, getLogicalDate())
+      .then(e => setTodayEntry(e ?? null))
+      .catch(e => { console.error('Firestoreエラー:', e); });
   }, [user]);
 
   const handleLogin = async () => {

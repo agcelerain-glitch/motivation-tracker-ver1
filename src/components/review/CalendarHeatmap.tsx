@@ -1,5 +1,6 @@
 'use client';
 import { COLORS } from '@/config/design';
+import { getLogicalDate } from '@/lib/date';
 import type { Entry } from '@/types/entry';
 
 interface Props {
@@ -14,14 +15,20 @@ function heatColor(value: number | null): string {
 }
 
 export default function CalendarHeatmap({ entries }: Props) {
-  const byDate = new Map(entries.map(e => [e.logicalDate, e]));
+  // 同じ日付に複数エントリがある場合は最後のものを使う（テスト送信対応）
+  const byDate = new Map<string, Entry>();
+  for (const e of [...entries].reverse()) {
+    byDate.set(e.logicalDate, e);
+  }
 
-  const today = new Date();
+  // 論理日付（JST・4時境界）基準で84日間を構築
+  const todayStr = getLogicalDate();
+  const todayBase = new Date(`${todayStr}T12:00:00+09:00`);
   const days: string[] = [];
   for (let i = 83; i >= 0; i--) {
-    const d = new Date(today);
+    const d = new Date(todayBase);
     d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+    days.push(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(d));
   }
 
   const weeks: string[][] = [];

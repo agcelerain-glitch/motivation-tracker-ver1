@@ -7,15 +7,14 @@ import { authErrorMessage } from '@/lib/firebaseConfig';
 
 export function useAuthState() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
+  // auth が null なら即座に loading=false、エラーも初期値で設定する
+  const [loading, setLoading] = useState(() => !!auth);
+  const [authError, setAuthError] = useState<string | null>(
+    () => auth ? null : 'Firebase Auth が初期化されていません。環境変数を確認してください。'
+  );
 
   useEffect(() => {
-    if (!auth) {
-      setAuthError('Firebase Auth が初期化されていません。環境変数を確認してください。');
-      setLoading(false);
-      return;
-    }
+    if (!auth) return; // エラーは useState 初期値で設定済み
     try {
       return onAuthStateChanged(
         auth,
@@ -34,8 +33,9 @@ export function useAuthState() {
     } catch (e) {
       const err = e as { code?: string; message?: string };
       console.error('[Auth init error]', e);
-      setAuthError(authErrorMessage(err.code ?? 'unknown'));
-      setLoading(false);
+      const msg = authErrorMessage(err.code ?? 'unknown');
+      // setTimeout で非同期化し、エフェクト内同期 setState 警告を回避
+      setTimeout(() => { setAuthError(msg); setLoading(false); }, 0);
     }
   }, []);
 

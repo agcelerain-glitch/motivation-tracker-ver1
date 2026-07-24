@@ -122,7 +122,7 @@ export default function TomorrowStep({ value, prevTomorrow, onChange, onNext, on
             fontFamily: 'Zen Kaku Gothic New', fontWeight: 700,
           }}
         >
-          送信する
+          確認する
         </button>
       </div>
     </div>

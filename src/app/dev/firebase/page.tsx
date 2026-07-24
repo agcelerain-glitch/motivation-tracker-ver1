@@ -9,6 +9,15 @@ import { useAuthState } from '@/lib/hooks/useAuthState';
 import { COLORS } from '@/config/design';
 import { useRouter } from 'next/navigation';
 
+function DiagSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section style={{ background: COLORS.inkRaised, borderRadius: 10, padding: '14px 16px' }}>
+      <p style={{ color: COLORS.sprout, fontSize: 12, fontFamily: 'Roboto Mono', margin: '0 0 10px', fontWeight: 700 }}>{title}</p>
+      {children}
+    </section>
+  );
+}
+
 export default function FirebaseDiagPage() {
   const router = useRouter();
   const { user, authError } = useAuthState();
@@ -32,13 +41,6 @@ export default function FirebaseDiagPage() {
     }
   };
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section style={{ background: COLORS.inkRaised, borderRadius: 10, padding: '14px 16px' }}>
-      <p style={{ color: COLORS.sprout, fontSize: 12, fontFamily: 'Roboto Mono', margin: '0 0 10px', fontWeight: 700 }}>{title}</p>
-      {children}
-    </section>
-  );
-
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.ink, padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -46,7 +48,7 @@ export default function FirebaseDiagPage() {
         <h1 style={{ color: COLORS.chalk, fontSize: 18, fontFamily: 'Shippori Mincho', margin: 0 }}>Firebase 診断</h1>
       </header>
 
-      <Section title="環境変数チェック">
+      <DiagSection title="環境変数チェック">
         {configChecks.map(c => (
           <div key={c.envVar} style={{ display: 'flex', gap: 10, marginBottom: 6, alignItems: 'flex-start' }}>
             <span style={{ color: c.ok ? COLORS.sprout : COLORS.alert, fontFamily: 'Roboto Mono', fontSize: 13, flexShrink: 0 }}>
@@ -62,15 +64,15 @@ export default function FirebaseDiagPage() {
             </div>
           </div>
         ))}
-      </Section>
+      </DiagSection>
 
-      <Section title="Auth 初期化状態">
+      <DiagSection title="Auth 初期化状態">
         <p style={{ color: authError ? COLORS.alert : COLORS.sprout, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: 0 }}>
           {authError ?? '正常に初期化されています'}
         </p>
-      </Section>
+      </DiagSection>
 
-      <Section title="ログインユーザー">
+      <DiagSection title="ログインユーザー">
         {user ? (
           <>
             <p style={{ color: COLORS.sprout, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 4px' }}>ログイン済み</p>
@@ -80,9 +82,9 @@ export default function FirebaseDiagPage() {
         ) : (
           <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: 0 }}>未ログイン</p>
         )}
-      </Section>
+      </DiagSection>
 
-      <Section title="Google ログインテスト">
+      <DiagSection title="Google ログインテスト">
         <button
           onClick={runLoginTest}
           style={{ background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 14, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}
@@ -96,9 +98,9 @@ export default function FirebaseDiagPage() {
             </p>
           </div>
         )}
-      </Section>
+      </DiagSection>
 
-      <Section title="チェックリスト（よくある原因）">
+      <DiagSection title="チェックリスト（よくある原因）">
         {[
           { check: 'Firebase Console → Authentication → Sign-in method → Google が有効', help: 'プロバイダ一覧でGoogleが「有効」になっているか確認' },
           { check: 'Firebase Console → Authentication → Settings → 承認済みドメインにVercelのURLを追加', help: '例: motivation-tracker-ver1.vercel.app（https:// なし）' },
@@ -115,7 +117,7 @@ export default function FirebaseDiagPage() {
             </p>
           </div>
         ))}
-      </Section>
+      </DiagSection>
     </div>
   );
 }
