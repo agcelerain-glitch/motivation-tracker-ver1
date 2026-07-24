@@ -130,13 +130,6 @@ export default function HomePage() {
               </p>
             </div>
           )}
-
-          <button
-            onClick={() => router.push('/dev/firebase')}
-            style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 11, cursor: 'pointer', fontFamily: 'Roboto Mono', textDecoration: 'underline' }}
-          >
-            Firebase 設定を診断する
-          </button>
         </div>
       ) : (
         <>

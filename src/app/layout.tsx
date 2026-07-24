@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Shippori_Mincho, Zen_Kaku_Gothic_New, Roboto_Mono } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
+
+const GA_ID = 'G-KCBKM71RRV';
 
 const shippori = Shippori_Mincho({
   weight: ['400', '700'],
@@ -39,6 +42,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja" className={`${shippori.variable} ${zenKaku.variable} ${robotoMono.variable}`}>
       <body style={{ background: '#16182B', margin: 0, padding: 0 }}>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${GA_ID}');
+        `}</Script>
         <div style={{ maxWidth: 430, margin: '0 auto', minHeight: '100dvh' }}>
           {children}
         </div>
