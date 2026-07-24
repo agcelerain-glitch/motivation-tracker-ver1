@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithPopup, signOut, type AuthError } from 'firebase/auth';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
 import { getLogicalDate } from '@/lib/date';
@@ -60,7 +60,13 @@ export default function HomePage() {
     setLoginError(null);
     setLoggingIn(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      // LINE連携の照合に必要なため、ログイン毎に email を profile に保存する
+      await setDoc(doc(db, 'users', result.user.uid), {
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL,
+      }, { merge: true });
     } catch (e) {
       const err = e as AuthError;
       console.error('[Auth Error]', err.code, err.message);
