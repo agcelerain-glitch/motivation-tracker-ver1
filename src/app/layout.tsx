@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { Shippori_Mincho, Zen_Kaku_Gothic_New, Roboto_Mono } from 'next/font/google';
 import Script from 'next/script';
+import { config } from '@fortawesome/fontawesome-svg-core';
+import '@fortawesome/fontawesome-svg-core/styles.css';
 import './globals.css';
+
+config.autoAddCss = false;
 
 const GA_ID = 'G-KCBKM71RRV';
 
