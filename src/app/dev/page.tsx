@@ -1,4 +1,6 @@
 'use client';
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import RadialBandPicker from '@/components/record/RadialBandPicker';
 import type { Band } from '@/types/entry';
