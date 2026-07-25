@@ -8,14 +8,14 @@ interface Props {
   label?: string;
 }
 
-const LEVELS: { value: Level; label: string }[] = [
-  { value: 1, label: '1' },
-  { value: 2, label: '2' },
-  { value: 3, label: '3' },
-  { value: 4, label: 'ふつう' },
-  { value: 5, label: '5' },
-  { value: 6, label: '6' },
-  { value: 7, label: '7' },
+const LEVELS: { value: Level; label: string; align: 'left' | 'center' | 'right' }[] = [
+  { value: 1, label: '1', align: 'left' },
+  { value: 2, label: '2', align: 'left' },
+  { value: 3, label: '3', align: 'left' },
+  { value: 4, label: 'ふつう', align: 'center' },
+  { value: 5, label: '5', align: 'right' },
+  { value: 6, label: '6', align: 'right' },
+  { value: 7, label: '7', align: 'right' },
 ];
 
 function levelColor(v: Level): string {
@@ -32,7 +32,7 @@ export default function LevelPicker({ value, onChange, label }: Props) {
           {label}
         </p>
       )}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
         {LEVELS.map(l => (
           <button
             key={l.value}
@@ -44,11 +44,16 @@ export default function LevelPicker({ value, onChange, label }: Props) {
               borderRadius: 8,
               background: value === l.value ? levelColor(l.value) : '#2A2D45',
               color: value === l.value ? COLORS.chalk : COLORS.muted,
-              fontSize: l.value === 4 ? 12 : 16,
+              fontSize: l.value === 4 ? 10 : 16,
               fontFamily: l.value === 4 ? 'Zen Kaku Gothic New' : 'Roboto Mono, monospace',
               cursor: 'pointer',
               transition: 'background 0.15s, color 0.15s',
               outline: value === l.value ? `2px solid ${COLORS.sprout}` : 'none',
+              textAlign: l.align,
+              paddingLeft: l.align === 'left' ? '6px' : '2px',
+              paddingRight: l.align === 'right' ? '6px' : '2px',
+              paddingTop: 0,
+              paddingBottom: 0,
             }}
           >
             {l.label}
@@ -56,8 +61,8 @@ export default function LevelPicker({ value, onChange, label }: Props) {
         ))}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px' }}>
-        <span style={{ color: COLORS.muted, fontSize: 11 }}>低</span>
-        <span style={{ color: COLORS.muted, fontSize: 11 }}>高</span>
+        <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New' }}>← 低い</span>
+        <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New' }}>高い →</span>
       </div>
     </div>
   );

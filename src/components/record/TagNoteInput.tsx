@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import { COLORS } from '@/config/design';
 
 interface TagNoteValue {
@@ -17,20 +16,11 @@ interface Props {
 }
 
 export default function TagNoteInput({ presets, value, onChange, yesterdayTomorrow, label }: Props) {
-  const [customInput, setCustomInput] = useState('');
-
   const toggleTag = (tag: string) => {
     const next = value.tags.includes(tag)
       ? value.tags.filter(t => t !== tag)
       : [...value.tags, tag];
     onChange({ ...value, tags: next, skipped: false });
-  };
-
-  const addCustom = () => {
-    const t = customInput.trim();
-    if (!t) return;
-    onChange({ ...value, tags: [...value.tags, t], skipped: false });
-    setCustomInput('');
   };
 
   return (
@@ -76,33 +66,10 @@ export default function TagNoteInput({ presets, value, onChange, yesterdayTomorr
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          value={customInput}
-          onChange={e => setCustomInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && addCustom()}
-          placeholder="カスタム追加"
-          style={{
-            flex: 1, background: '#2A2D45', border: 'none', borderRadius: 8,
-            color: COLORS.chalk, padding: '8px 12px', fontSize: 13,
-            fontFamily: 'Zen Kaku Gothic New', outline: 'none',
-          }}
-        />
-        <button
-          onClick={addCustom}
-          style={{
-            background: COLORS.sprout, color: COLORS.ink, border: 'none',
-            borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer',
-          }}
-        >
-          追加
-        </button>
-      </div>
-
       <textarea
         value={value.note ?? ''}
         onChange={e => onChange({ ...value, note: e.target.value || null, skipped: false })}
-        placeholder="補足（任意）"
+        placeholder="補足メモ（任意）"
         rows={2}
         style={{
           background: '#2A2D45', border: 'none', borderRadius: 8,

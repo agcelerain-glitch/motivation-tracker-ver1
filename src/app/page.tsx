@@ -3,11 +3,11 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithPopup, signOut, type AuthError } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, type AuthError } from 'firebase/auth';
 import { collection, getDocs, query, where, orderBy, doc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
-import { getLogicalDate } from '@/lib/date';
+import { getLogicalDate, previousLogicalDate } from '@/lib/date';
 import { getEntry } from '@/lib/firestore/entries';
 import { COLORS } from '@/config/design';
 import { checkFirebaseConfig, allConfigOk, authErrorMessage } from '@/lib/firebaseConfig';
@@ -19,6 +19,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 import type { Entry } from '@/types/entry';
+
+function isLineApp(): boolean {
+  return typeof navigator !== 'undefined' && /Line\//i.test(navigator.userAgent);
+}
 
 interface ActiveTask {
   id: string;
@@ -35,6 +39,7 @@ export default function HomePage() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [tasks, setTasks] = useState<ActiveTask[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
+  const [prevEntry, setPrevEntry] = useState<Entry | null>(null);
   const configChecks = checkFirebaseConfig();
   const configOk = allConfigOk();
 
@@ -56,12 +61,51 @@ export default function HomePage() {
     }).catch(e => { console.error('タスク取得エラー:', e); });
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    const prev = previousLogicalDate(getLogicalDate());
+    getEntry(user.uid, prev)
+      .then(e => setPrevEntry(e ?? null))
+      .catch(e => { console.error('前日エントリ取得エラー:', e); });
+  }, [user]);
+
+  // LINE WebView などリダイレクトログイン後の結果を受け取る
+  useEffect(() => {
+    if (!auth) return;
+    getRedirectResult(auth)
+      .then(async result => {
+        if (!result?.user) return;
+        await setDoc(doc(db, 'users', result.user.uid), {
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+        }, { merge: true });
+      })
+      .catch(e => {
+        const err = e as AuthError;
+        console.error('[Redirect Auth Error]', err.code, err.message);
+        setLoginError(authErrorMessage(err.code ?? 'unknown'));
+      });
+  }, []);
+
   const handleLogin = async () => {
     setLoginError(null);
     setLoggingIn(true);
+    // LINE WebView はポップアップをブロックするため、リダイレクトフローを使う
+    if (isLineApp()) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        // ページが遷移するため以降は実行されない
+      } catch (e) {
+        const err = e as AuthError;
+        console.error('[Redirect Auth Error]', err.code, err.message);
+        setLoginError(authErrorMessage(err.code ?? 'unknown'));
+        setLoggingIn(false);
+      }
+      return;
+    }
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      // LINE連携の照合に必要なため、ログイン毎に email を profile に保存する
       await setDoc(doc(db, 'users', result.user.uid), {
         email: result.user.email,
         displayName: result.user.displayName,
@@ -137,8 +181,16 @@ export default function HomePage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%', maxWidth: 360 }}>
           <p style={{ color: COLORS.muted, fontSize: 13, fontFamily: 'Zen Kaku Gothic New', textAlign: 'center', lineHeight: 1.8, margin: 0 }}>
-            日々の行動と内面状態を記録し、<br />「なぜ続いたか」を自己分析できます 📈
+            日々の行動と内面状態を記録し、<br />「なぜ続いたか」を自己分析できます
           </p>
+
+          {isLineApp() && (
+            <div style={{ background: '#1A2A1F', border: `1px solid ${COLORS.sprout}40`, borderRadius: 10, padding: '12px 14px', width: '100%' }}>
+              <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.7 }}>
+                LINEアプリ内ブラウザを検出しました。ログインボタンをタップするとGoogleのログイン画面へ移動します。完了後、このページに戻ります。
+              </p>
+            </div>
+          )}
 
           <button
             onClick={handleLogin}
@@ -200,15 +252,15 @@ export default function HomePage() {
           今日はどのタスクに取り組む？
         </p>
 
-        {tasks.length === 0 ? (
-          /* タスクなし → 警告 */
+        {!tasks.some(t => t.title && t.deadline) ? (
+          /* 目標と期限が揃ったアクティブタスクなし → 警告 */
           <div style={{ background: '#2A2415', border: '1px solid #6A5A20', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <p style={{ color: '#D4B840', fontSize: 13, fontFamily: 'Zen Kaku Gothic New', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
               <FontAwesomeIcon icon={faTriangleExclamation} />
               タスクが設定されていません
             </p>
             <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.6 }}>
-              まずは目標と期限から設定してください。<br />目標があると記録の意味がより明確になります ✨
+              目標と期限を設定してください。<br />両方揃うと記録の意味がより明確になります。
             </p>
             <button
               onClick={() => router.push('/tasks')}
@@ -254,6 +306,18 @@ export default function HomePage() {
         )}
       </section>
 
+      {/* 今日やること（前日の「明日のやること」） */}
+      {prevEntry?.tomorrow?.text && !prevEntry.tomorrow.skipped && (
+        <section style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '14px 16px' }}>
+          <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            今日やること
+          </p>
+          <p style={{ color: COLORS.chalk, fontSize: 15, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.7 }}>
+            {prevEntry.tomorrow.text}
+          </p>
+        </section>
+      )}
+
       {/* 今日の記録ボタン */}
       <section>
         {todayEntry ? (
@@ -297,6 +361,18 @@ export default function HomePage() {
           </button>
         )}
       </section>
+
+      {/* 明日やること（今日の記録から） */}
+      {todayEntry?.tomorrow?.text && !todayEntry.tomorrow.skipped && (
+        <section style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '14px 16px' }}>
+          <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 8px' }}>
+            明日やること
+          </p>
+          <p style={{ color: COLORS.chalk, fontSize: 15, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.7 }}>
+            {todayEntry.tomorrow.text}
+          </p>
+        </section>
+      )}
 
       {/* 底部ナビゲーション */}
       <nav style={{

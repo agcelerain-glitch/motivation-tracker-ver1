@@ -64,6 +64,21 @@ export default function TomorrowStep({ value, prevTomorrow, onChange, onNext, on
         明日のやること
       </p>
 
+      {/* 昨日の予定を常に参照として表示 */}
+      {prevTomorrow?.text && !prevTomorrow.skipped && (
+        <div style={{
+          background: '#1F2238', border: `1px solid #3A3D55`,
+          borderRadius: 10, padding: '10px 14px',
+        }}>
+          <p style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 4px' }}>
+            昨日の予定
+          </p>
+          <p style={{ color: COLORS.chalk, fontSize: 14, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.6 }}>
+            {prevTomorrow.text}
+          </p>
+        </div>
+      )}
+
       <AnimatePresence>
         {showNudge && (
           <CarryOverNudge
@@ -76,17 +91,17 @@ export default function TomorrowStep({ value, prevTomorrow, onChange, onNext, on
         )}
       </AnimatePresence>
 
-      {prevTomorrow?.text && !value.carriedOver && !value.nudgeShown && (
+      {prevTomorrow?.text && !prevTomorrow.skipped && !value.carriedOver && !value.nudgeShown && (
         <button
           onClick={handleCarryOver}
           style={{
-            background: '#2A2D45', border: `1px solid ${COLORS.sprout}`,
+            background: '#2A3A35', border: `1px solid ${COLORS.sprout}`,
             color: COLORS.sprout, borderRadius: 8, padding: '10px 14px',
             fontSize: 13, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New',
             textAlign: 'left',
           }}
         >
-          昨日のやることを続ける：{prevTomorrow.text}
+          昨日の予定をそのまま引き継ぐ
         </button>
       )}
 

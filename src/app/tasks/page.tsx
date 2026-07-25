@@ -13,7 +13,7 @@ interface Task {
   title: string;
   why: string;
   deadline: string | null;
-  status: 'active' | 'done' | 'abandoned';
+  status: 'active' | 'done' | 'paused';
   daysLeft: number | null;
 }
 
@@ -77,6 +77,7 @@ export default function TasksPage() {
   if (!user) { router.replace('/'); return null; }
 
   const activeTasks = tasks.filter(t => t.status === 'active');
+  const pausedTasks = tasks.filter(t => t.status === 'paused');
 
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.ink, padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -129,8 +130,31 @@ export default function TasksPage() {
                 )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => handleStatus(t.id, 'done')} style={{ flex: 1, background: 'transparent', border: `1px solid ${COLORS.sprout}`, color: COLORS.sprout, borderRadius: 6, padding: '6px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}>達成</button>
-                  <button onClick={() => handleStatus(t.id, 'abandoned')} style={{ flex: 1, background: 'transparent', border: '1px solid #3A3D55', color: COLORS.muted, borderRadius: 6, padding: '6px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}>中断</button>
+                  <button onClick={() => handleStatus(t.id, 'paused')} style={{ flex: 1, background: 'transparent', border: '1px solid #3A3D55', color: COLORS.muted, borderRadius: 6, padding: '6px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}>一時停止</button>
                 </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {pausedTasks.length > 0 && (
+        <section>
+          <h2 style={{ color: COLORS.muted, fontSize: 15, fontFamily: 'Shippori Mincho', marginBottom: 10 }}>一時停止中</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pausedTasks.map(t => (
+              <div key={t.id} style={{ background: COLORS.inkRaised, borderRadius: 10, padding: '14px 14px 10px', opacity: 0.7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ background: '#2A2D45', color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', padding: '2px 8px', borderRadius: 4 }}>現在一時停止中</span>
+                </div>
+                <p style={{ color: COLORS.chalk, fontSize: 15, margin: '0 0 4px', fontFamily: 'Zen Kaku Gothic New' }}>{t.title}</p>
+                {t.why && <p style={{ color: COLORS.muted, fontSize: 12, margin: '0 0 8px', fontFamily: 'Zen Kaku Gothic New' }}>なぜ: {t.why}</p>}
+                {t.daysLeft !== null && (
+                  <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 8px', fontFamily: 'Roboto Mono' }}>
+                    残り {t.daysLeft} 日
+                  </p>
+                )}
+                <button onClick={() => handleStatus(t.id, 'active')} style={{ background: 'transparent', border: `1px solid ${COLORS.sprout}`, color: COLORS.sprout, borderRadius: 6, padding: '6px 16px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}>再開</button>
               </div>
             ))}
           </div>

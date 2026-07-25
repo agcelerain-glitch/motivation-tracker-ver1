@@ -214,7 +214,7 @@ export default function RecordPage() {
     if (step >= axisStartStep && step < axisEndStep) {
       const axis = currentAxes[step - axisStartStep];
       return (
-        <StepShell key={axis.id} step={step + 1} total={TOTAL} onBack={goBack}>
+        <StepShell key={axis.id} step={step + 1} total={TOTAL} onBack={goBack} onSkip={() => { draft.setAxis(axis.id as AxisId, null); goNext(); }}>
           <RadialBandPicker
             poleA={axis.poleA}
             poleB={axis.poleB}
@@ -223,12 +223,6 @@ export default function RecordPage() {
             onChange={(v: Band | null) => draft.setAxis(axis.id as AxisId, v)}
             onConfirm={goNext}
           />
-          <button
-            onClick={() => { draft.setAxis(axis.id as AxisId, null); goNext(); }}
-            style={{ marginTop: 8, background: 'transparent', color: COLORS.muted, border: `1px solid ${COLORS.muted}`, borderRadius: 20, padding: '6px 20px', fontSize: 13, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
-          >
-            わからない → スキップ
-          </button>
         </StepShell>
       );
     }

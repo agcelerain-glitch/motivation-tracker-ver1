@@ -51,6 +51,8 @@ export function authErrorMessage(code: string): string {
     'auth/too-many-requests':          'リクエストが多すぎます。しばらく待ってから再試行してください。',
     'auth/cancelled-popup-request':    '別のポップアップが開いています。前のポップアップを閉じてください。',
     'auth/internal-error':             'Firebase内部エラーです。ブラウザの開発者ツールのConsoleを確認してください。',
+    'auth/web-storage-unsupported':    'このブラウザはLocalStorageをサポートしていません。LINEアプリ内ブラウザの場合は、ChromeやSafariなどの外部ブラウザでアクセスしてください。',
+    'auth/redirect-cancelled-by-user': 'ログインがキャンセルされました。',
   };
   return map[code] ?? `認証エラー (${code})。ブラウザのConsoleで詳細を確認してください。`;
 }
