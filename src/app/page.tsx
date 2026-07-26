@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, type AuthError } from 'firebase/auth';
-import { collection, getDocs, query, where, orderBy, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
 import { getLogicalDate, previousLogicalDate } from '@/lib/date';
@@ -52,10 +52,10 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!user) return;
+    // orderBy を外してフロントでフィルタ（複合インデックス不要）
     getDocs(query(
       collection(db, 'users', user.uid, 'tasks'),
       where('status', '==', 'active'),
-      orderBy('createdAt', 'desc'),
     )).then(snap => {
       setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as ActiveTask)));
     }).catch(e => { console.error('タスク取得エラー:', e); });
