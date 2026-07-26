@@ -13,7 +13,6 @@ interface Props {
 }
 
 const ARC_START_DEG = 225;
-const ARC_END_DEG   = 315;
 const TOTAL_ARC     = 270;
 const BANDS         = 6;
 
@@ -135,8 +134,16 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
     ? degToXY(indexToAngle(displayIdx), R + STROKE / 2 + 10, CX, CY)
     : null;
 
-  const poleAPos = degToXY(ARC_START_DEG, R, CX, CY);
-  const poleBPos = degToXY(ARC_END_DEG,   R, CX, CY);
+  const labelStyle: React.CSSProperties = {
+    position: 'absolute',
+    bottom: '24%',
+    width: '38%',
+    color: '#7A7F9A',
+    fontSize: 12,
+    fontFamily: 'Zen Kaku Gothic New, sans-serif',
+    lineHeight: 1.4,
+    pointerEvents: 'none',
+  };
 
   return (
     <div className="flex flex-col items-center select-none" style={{ touchAction: 'none' }}>
@@ -148,7 +155,7 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
         <svg
           ref={svgRef}
           viewBox={`0 0 ${SIZE} ${SIZE + 40}`}
-          style={{ width: '100%', touchAction: 'none', cursor: 'pointer' }}
+          style={{ width: '100%', touchAction: 'none', cursor: 'pointer', display: 'block' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -178,13 +185,6 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
             />
           )}
 
-          <text x={poleAPos.x - 12} y={CY + R * 0.7} textAnchor="end" fontSize="13" fill="#7A7F9A" fontFamily="Zen Kaku Gothic New, sans-serif">
-            {poleA}
-          </text>
-          <text x={poleBPos.x + 12} y={CY + R * 0.7} textAnchor="start" fontSize="13" fill="#7A7F9A" fontFamily="Zen Kaku Gothic New, sans-serif">
-            {poleB}
-          </text>
-
           <foreignObject x={CX - 70} y={CY - 60} width="140" height="120">
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
               {displayIdx !== null ? (
@@ -212,6 +212,15 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
             </div>
           </foreignObject>
         </svg>
+
+        {/* poleA ラベル（アーク左端 = バンド1側） */}
+        <div style={{ ...labelStyle, left: '2%', textAlign: 'left' }}>
+          {poleA}
+        </div>
+        {/* poleB ラベル（アーク右端 = バンド6側） */}
+        <div style={{ ...labelStyle, right: '2%', textAlign: 'right' }}>
+          {poleB}
+        </div>
       </div>
 
       <button

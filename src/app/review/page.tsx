@@ -2,12 +2,12 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChartLine, faCalendarDays, faArrowLeft, faPenToSquare, faFaceMeh } from '@fortawesome/free-solid-svg-icons';
+import { faChartLine, faCalendarDays, faArrowLeft, faPenToSquare, faFaceMeh, faBullseye } from '@fortawesome/free-solid-svg-icons';
 import { COLORS } from '@/config/design';
 import { groupByHighLow, computeAxisDivergence } from '@/lib/analysis';
 import type { Entry } from '@/types/entry';
@@ -15,10 +15,30 @@ import CalendarHeatmap from '@/components/review/CalendarHeatmap';
 import TrendChart from '@/components/review/TrendChart';
 import AxisCompareChart from '@/components/review/AxisCompareChart';
 
+interface ReviewTask {
+  id: string;
+  title: string;
+  why: string;
+  deadline: string | null;
+  status: 'active' | 'done' | 'paused';
+}
+
+const TASK_STATUS_LABEL: Record<ReviewTask['status'], string> = {
+  active: '継続中',
+  paused: '一時停止中',
+  done:   '達成',
+};
+const TASK_STATUS_COLOR: Record<ReviewTask['status'], string> = {
+  active: '#5FB49C',
+  paused: '#D4B840',
+  done:   '#4A8FD4',
+};
+
 export default function ReviewPage() {
   const router = useRouter();
   const { user, loading } = useAuthState();
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -38,6 +58,13 @@ export default function ReviewPage() {
         setFetchError('データの読み込みに失敗しました。接続を確認してください。');
         setFetching(false);
       });
+
+    const tq = query(collection(db, 'users', user.uid, 'tasks'), orderBy('createdAt', 'desc'));
+    getDocs(tq)
+      .then(snap => {
+        setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as ReviewTask)));
+      })
+      .catch(err => console.error('タスク取得エラー:', err));
   }, [user]);
 
   if (loading || fetching) {
@@ -76,6 +103,64 @@ export default function ReviewPage() {
         <div style={{ background: '#2A1A1F', border: `1px solid ${COLORS.alert}`, borderRadius: 10, padding: '12px 14px' }}>
           <p style={{ color: COLORS.alert, fontSize: 13, margin: 0, fontFamily: 'Zen Kaku Gothic New' }}>{fetchError}</p>
         </div>
+      )}
+
+      {/* 目標・タスク一覧 */}
+      {tasks.length > 0 && (
+        <section>
+          <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FontAwesomeIcon icon={faBullseye} style={{ color: COLORS.sprout, fontSize: 14 }} />
+            目標
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {tasks.map(t => {
+              const color = TASK_STATUS_COLOR[t.status];
+              const now = new Date();
+              const daysLeft = t.deadline
+                ? Math.ceil((new Date(t.deadline).getTime() - now.getTime()) / 86400000)
+                : null;
+              return (
+                <div key={t.id} style={{
+                  background: COLORS.inkRaised, borderRadius: 10,
+                  padding: '12px 14px', borderLeft: `3px solid ${color}`,
+                  opacity: t.status === 'done' ? 0.75 : 1,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <p style={{ color: COLORS.chalk, fontSize: 14, margin: 0, fontFamily: 'Zen Kaku Gothic New', fontWeight: t.status === 'active' ? 700 : 400 }}>
+                      {t.title}
+                    </p>
+                    <span style={{
+                      color: color, fontSize: 11, fontFamily: 'Zen Kaku Gothic New',
+                      padding: '2px 8px', borderRadius: 4,
+                      border: `1px solid ${color}50`,
+                    }}>
+                      {TASK_STATUS_LABEL[t.status]}
+                    </span>
+                  </div>
+                  {t.why && (
+                    <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 4px', fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.5 }}>
+                      {t.why}
+                    </p>
+                  )}
+                  {t.deadline && (
+                    <p style={{ color: daysLeft !== null && daysLeft < 3 && t.status === 'active' ? COLORS.alert : COLORS.muted, fontSize: 11, margin: 0, fontFamily: 'Roboto Mono' }}>
+                      期限: {t.deadline}
+                      {daysLeft !== null && t.status !== 'done' && (
+                        <span style={{ marginLeft: 8 }}>残り {daysLeft} 日</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => router.push('/tasks')}
+            style={{ marginTop: 10, background: 'transparent', border: `1px solid #3A3D55`, color: COLORS.muted, borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
+          >
+            タスクを管理する →
+          </button>
+        </section>
       )}
 
       {/* カレンダーヒートマップ（常に表示） */}
