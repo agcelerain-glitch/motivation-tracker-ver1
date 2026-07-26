@@ -14,7 +14,7 @@ import { checkFirebaseConfig, allConfigOk, authErrorMessage } from '@/lib/fireba
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faRightFromBracket, faPenToSquare, faChartLine,
-  faBullseye, faGear, faTriangleExclamation, faChevronDown,
+  faBullseye, faGear, faTriangleExclamation,
   faCircleCheck, faRotateLeft,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
@@ -222,6 +222,7 @@ export default function HomePage() {
 
   /* ── ログイン後 ────────────────────── */
   const today = getLogicalDate();
+  const now = new Date();
 
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.ink, padding: '24px 16px 100px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -275,50 +276,36 @@ export default function HomePage() {
             </button>
           </div>
         ) : (
-          /* タスクあり → プルダウン */
-          <div style={{ position: 'relative' }}>
-            <select
-              value={selectedTaskId}
-              onChange={e => setSelectedTaskId(e.target.value)}
-              style={{
-                width: '100%', background: '#2A2D45', border: `1px solid ${selectedTaskId ? COLORS.sprout : '#3A3D55'}`,
-                borderRadius: 10, color: selectedTaskId ? COLORS.chalk : COLORS.muted,
-                padding: '12px 40px 12px 14px', fontSize: 14,
-                fontFamily: 'Zen Kaku Gothic New', cursor: 'pointer', outline: 'none',
-                appearance: 'none', WebkitAppearance: 'none',
-              }}
-            >
-              <option value="">タスクを選択する（任意）</option>
-              {tasks.map(t => (
-                <option key={t.id} value={t.id}>{t.title}</option>
-              ))}
-            </select>
-            <FontAwesomeIcon
-              icon={faChevronDown}
-              style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: COLORS.muted, fontSize: 12, pointerEvents: 'none' }}
-            />
-            {selectedTaskId && (() => {
-              const sel = tasks.find(t => t.id === selectedTaskId);
-              if (!sel) return null;
-              const now = new Date();
-              const daysLeft = sel.deadline
-                ? Math.ceil((new Date(sel.deadline).getTime() - now.getTime()) / 86400000)
+          /* タスクあり → リスト表示 */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {tasks.map(t => {
+              const daysLeft = t.deadline
+                ? Math.ceil((new Date(t.deadline).getTime() - now.getTime()) / 86400000)
                 : null;
+              const isSelected = selectedTaskId === t.id;
               return (
-                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {sel.deadline && (
-                    <p style={{ color: daysLeft !== null && daysLeft < 3 ? COLORS.alert : COLORS.muted, fontSize: 11, fontFamily: 'Roboto Mono', margin: 0 }}>
-                      期限: {sel.deadline}{daysLeft !== null ? `　（残り ${daysLeft} 日）` : ''}
-                    </p>
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTaskId(isSelected ? '' : t.id)}
+                  style={{
+                    width: '100%', background: isSelected ? '#1E2E2A' : '#2A2D45',
+                    border: `1px solid ${isSelected ? COLORS.sprout : '#3A3D55'}`,
+                    borderRadius: 10, padding: '12px 14px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: isSelected ? COLORS.chalk : COLORS.muted, fontSize: 14, fontFamily: 'Zen Kaku Gothic New', fontWeight: isSelected ? 700 : 400 }}>
+                    {t.title}
+                  </span>
+                  {daysLeft !== null && (
+                    <span style={{ color: daysLeft < 3 ? COLORS.alert : COLORS.muted, fontSize: 11, fontFamily: 'Roboto Mono', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                      残り{daysLeft}日
+                    </span>
                   )}
-                  {sel.why && (
-                    <p style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.5 }}>
-                      💡 {sel.why}
-                    </p>
-                  )}
-                </div>
+                </button>
               );
-            })()}
+            })}
           </div>
         )}
       </section>

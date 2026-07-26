@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { collection, addDoc, getDocs, updateDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
 import { useRouter } from 'next/navigation';
@@ -43,6 +43,7 @@ export default function TasksPage() {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: '', why: '', deadline: '' });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadTasks = (uid: string) => {
     const q = query(collection(db, 'users', uid, 'tasks'), orderBy('createdAt', 'desc'));
@@ -90,6 +91,13 @@ export default function TasksPage() {
   const startEdit = (t: Task) => {
     setEditingId(t.id);
     setEditForm({ title: t.title, why: t.why ?? '', deadline: t.deadline ?? '' });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!user) return;
+    await deleteDoc(doc(db, 'users', user.uid, 'tasks', id));
+    setDeletingId(null);
+    loadTasks(user.uid);
   };
 
   const handleSaveEdit = async () => {
@@ -216,10 +224,46 @@ export default function TasksPage() {
               </div>
             )}
             {t.status === 'paused' && (
-              <button onClick={() => handleStatus(t.id, 'active')}
-                style={{ background: 'transparent', border: `1px solid ${COLORS.sprout}`, color: COLORS.sprout, borderRadius: 6, padding: '6px 16px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', marginTop: 4 }}>
-                再開
-              </button>
+              deletingId === t.id ? (
+                <div style={{ marginTop: 8, background: '#2A1A1F', border: `1px solid ${COLORS.alert}`, borderRadius: 8, padding: '10px 12px' }}>
+                  <p style={{ color: COLORS.chalk, fontSize: 12, margin: '0 0 6px', fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.5 }}>
+                    「{t.title}」を削除しますか？
+                  </p>
+                  <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 10px', fontFamily: 'Zen Kaku Gothic New' }}>
+                    この操作は取り消せません。
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => setDeletingId(null)}
+                      style={{ flex: 1, background: 'transparent', border: '1px solid #3A3D55', color: COLORS.muted, borderRadius: 6, padding: '8px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
+                    >
+                      やめる
+                    </button>
+                    <button
+                      onClick={() => handleDelete(t.id)}
+                      style={{ flex: 1, background: COLORS.alert, color: '#fff', border: 'none', borderRadius: 6, padding: '8px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}
+                    >
+                      削除する
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  <button
+                    onClick={() => handleStatus(t.id, 'active')}
+                    style={{ background: 'transparent', border: `1px solid ${COLORS.sprout}`, color: COLORS.sprout, borderRadius: 6, padding: '6px 16px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
+                  >
+                    再開
+                  </button>
+                  <div style={{ flex: 1 }} />
+                  <button
+                    onClick={() => setDeletingId(t.id)}
+                    style={{ background: 'transparent', border: `1px solid ${COLORS.alert}50`, color: COLORS.alert, borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
+                  >
+                    削除
+                  </button>
+                </div>
+              )
             )}
           </>
         )}

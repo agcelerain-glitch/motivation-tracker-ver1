@@ -5,6 +5,8 @@ import type { Entry } from '@/types/entry';
 
 interface Props {
   entries: Entry[];
+  onDayTap?: (date: string) => void;
+  selectedDate?: string | null;
 }
 
 function heatColor(value: number | null): string {
@@ -14,14 +16,12 @@ function heatColor(value: number | null): string {
   return `hsl(162, 35%, ${lightness}%)`;
 }
 
-export default function CalendarHeatmap({ entries }: Props) {
-  // 同じ日付に複数エントリがある場合は最後のものを使う（テスト送信対応）
+export default function CalendarHeatmap({ entries, onDayTap, selectedDate }: Props) {
   const byDate = new Map<string, Entry>();
   for (const e of [...entries].reverse()) {
     byDate.set(e.logicalDate, e);
   }
 
-  // 論理日付（JST・4時境界）基準で84日間を構築
   const todayStr = getLogicalDate();
   const todayBase = new Date(`${todayStr}T12:00:00+09:00`);
   const days: string[] = [];
@@ -43,22 +43,31 @@ export default function CalendarHeatmap({ entries }: Props) {
 
   return (
     <section>
-      <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12 }}>記録カレンダー（直近12週）</h2>
+      <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12 }}>
+        記録カレンダー（直近12週）
+      </h2>
       <div style={{ display: 'flex', gap: 4, overflowX: 'auto' }}>
         {weeks.map((w, wi) => (
           <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {w.map(day => {
               const e = byDate.get(day);
               const v = e?.satisfaction ?? null;
+              const isSelected = day === selectedDate;
               return (
                 <div
                   key={day}
                   title={`${day}: 満足度 ${v ?? '未記録'}`}
+                  onClick={() => e && onDayTap?.(day)}
                   style={{
                     width: 14, height: 14, borderRadius: 3,
                     background: v !== null ? heatColor(v) : '#2A2D45',
-                    border: v !== null ? 'none' : '1px solid #3A3D55',
-                    cursor: 'pointer',
+                    border: isSelected
+                      ? `2px solid ${COLORS.sprout}`
+                      : (v !== null ? 'none' : '1px solid #3A3D55'),
+                    outline: isSelected ? `1px solid ${COLORS.sprout}` : 'none',
+                    outlineOffset: '1px',
+                    cursor: e ? 'pointer' : 'default',
+                    boxSizing: 'border-box',
                   }}
                 />
               );
@@ -67,6 +76,7 @@ export default function CalendarHeatmap({ entries }: Props) {
         ))}
       </div>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 8 }}>
+        <span style={{ color: COLORS.muted, fontSize: 10, marginRight: 2 }}>スコア</span>
         <span style={{ color: COLORS.muted, fontSize: 10 }}>低</span>
         {[1,2,3,4,5,6,7].map(v => (
           <div key={v} style={{ width: 12, height: 12, borderRadius: 2, background: heatColor(v) }} />

@@ -8,7 +8,8 @@ import { useAuthState } from '@/lib/hooks/useAuthState';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChartLine, faCalendarDays, faArrowLeft, faPenToSquare, faFaceMeh, faBullseye } from '@fortawesome/free-solid-svg-icons';
-import { COLORS } from '@/config/design';
+import { COLORS, BAND_COLORS } from '@/config/design';
+import { AXES } from '@/config/axes';
 import { groupByHighLow, computeAxisDivergence } from '@/lib/analysis';
 import type { Entry } from '@/types/entry';
 import CalendarHeatmap from '@/components/review/CalendarHeatmap';
@@ -24,15 +25,160 @@ interface ReviewTask {
 }
 
 const TASK_STATUS_LABEL: Record<ReviewTask['status'], string> = {
-  active: '継続中',
-  paused: '一時停止中',
-  done:   '達成',
+  active: '継続中', paused: '一時停止中', done: '達成',
 };
 const TASK_STATUS_COLOR: Record<ReviewTask['status'], string> = {
-  active: '#5FB49C',
-  paused: '#D4B840',
-  done:   '#4A8FD4',
+  active: '#5FB49C', paused: '#D4B840', done: '#4A8FD4',
 };
+
+const EMOTION_CONFIG: Record<string, { label: string; color: string }> = {
+  joy:    { label: '喜', color: '#E5C04A' },
+  anger:  { label: '怒', color: '#D94F5C' },
+  sorrow: { label: '哀', color: '#4A8FD4' },
+  fun:    { label: '楽', color: '#5FB49C' },
+  calm:   { label: '凪', color: '#7A7F9A' },
+};
+
+function EntryDetailContent({ entry }: { entry: Entry }) {
+  const axes = entry.axes ?? {};
+  const axesToShow = AXES.filter(a => a.id in axes);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12 }}>
+
+      {/* 達成度・満足度 */}
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div>
+          <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New' }}>達成度　</span>
+          <span style={{ color: COLORS.chalk, fontSize: 15, fontFamily: 'Roboto Mono', fontWeight: 700 }}>
+            {entry.achievement ?? '—'} <span style={{ fontSize: 11, color: COLORS.muted }}>/7</span>
+          </span>
+        </div>
+        <div>
+          <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New' }}>満足度　</span>
+          <span style={{ color: COLORS.chalk, fontSize: 15, fontFamily: 'Roboto Mono', fontWeight: 700 }}>
+            {entry.satisfaction ?? '—'} <span style={{ fontSize: 11, color: COLORS.muted }}>/7</span>
+          </span>
+        </div>
+      </div>
+
+      {/* 感情 */}
+      {(entry.emotions?.length ?? 0) > 0 && (
+        <div>
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px', fontFamily: 'Zen Kaku Gothic New' }}>感情</p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {entry.emotions.map(e => {
+              const cfg = EMOTION_CONFIG[e];
+              return (
+                <span key={e} style={{
+                  background: `${cfg?.color ?? COLORS.muted}25`,
+                  color: cfg?.color ?? COLORS.muted,
+                  fontSize: 13, padding: '3px 12px', borderRadius: 20,
+                  fontFamily: 'Zen Kaku Gothic New', border: `1px solid ${cfg?.color ?? COLORS.muted}50`,
+                }}>
+                  {cfg?.label ?? e}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* やったこと */}
+      {!entry.did?.skipped && ((entry.did?.tags?.length ?? 0) > 0 || entry.did?.note) && (
+        <div>
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px', fontFamily: 'Zen Kaku Gothic New' }}>やったこと</p>
+          {(entry.did.tags?.length ?? 0) > 0 && (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: entry.did.note ? 6 : 0 }}>
+              {entry.did.tags.map((tag, i) => (
+                <span key={i} style={{ background: `${COLORS.sprout}20`, color: COLORS.sprout, fontSize: 11, padding: '2px 8px', borderRadius: 12, fontFamily: 'Zen Kaku Gothic New' }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {entry.did.note && (
+            <p style={{ color: COLORS.chalk, fontSize: 13, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.6 }}>{entry.did.note}</p>
+          )}
+        </div>
+      )}
+
+      {/* できなかったこと */}
+      {!entry.didnt?.skipped && ((entry.didnt?.tags?.length ?? 0) > 0 || entry.didnt?.note) && (
+        <div>
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px', fontFamily: 'Zen Kaku Gothic New' }}>できなかったこと</p>
+          {(entry.didnt.tags?.length ?? 0) > 0 && (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: entry.didnt.note ? 6 : 0 }}>
+              {entry.didnt.tags.map((tag, i) => (
+                <span key={i} style={{ background: '#2A2D45', color: COLORS.muted, fontSize: 11, padding: '2px 8px', borderRadius: 12, fontFamily: 'Zen Kaku Gothic New' }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          {entry.didnt.note && (
+            <p style={{ color: COLORS.chalk, fontSize: 13, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.6 }}>{entry.didnt.note}</p>
+          )}
+        </div>
+      )}
+
+      {/* 軸スコア */}
+      {axesToShow.length > 0 && (
+        <div>
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px', fontFamily: 'Zen Kaku Gothic New' }}>軸スコア</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {axesToShow.map(axisDef => {
+              const band = axes[axisDef.id];
+              if (band === undefined) return null;
+              const bandColor = band !== null ? BAND_COLORS[band - 1].hex : COLORS.muted;
+              const poleLabel = band !== null ? (band <= 3 ? axisDef.poleA : axisDef.poleB) : null;
+              return (
+                <div key={axisDef.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', flex: 1, minWidth: 120 }}>
+                    {axisDef.question}
+                  </span>
+                  {band !== null ? (
+                    <span style={{ color: bandColor, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', background: `${bandColor}20`, padding: '2px 8px', borderRadius: 10, border: `1px solid ${bandColor}50`, whiteSpace: 'nowrap' }}>
+                      {poleLabel} ({band})
+                    </span>
+                  ) : (
+                    <span style={{ color: COLORS.muted, fontSize: 11 }}>わからない</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 気づき・挑戦 */}
+      {!entry.reflection?.skipped && (entry.reflection?.insight || entry.reflection?.challenge) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {entry.reflection.insight && (
+            <div>
+              <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 2px', fontFamily: 'Zen Kaku Gothic New' }}>今日の気づき</p>
+              <p style={{ color: COLORS.chalk, fontSize: 13, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.6 }}>{entry.reflection.insight}</p>
+            </div>
+          )}
+          {entry.reflection.challenge && (
+            <div>
+              <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 2px', fontFamily: 'Zen Kaku Gothic New' }}>今日の挑戦</p>
+              <p style={{ color: COLORS.chalk, fontSize: 13, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.6 }}>{entry.reflection.challenge}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 明日のやること */}
+      {!entry.tomorrow?.skipped && entry.tomorrow?.text && (
+        <div>
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 2px', fontFamily: 'Zen Kaku Gothic New' }}>明日のやること</p>
+          <p style={{ color: COLORS.chalk, fontSize: 13, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.6 }}>{entry.tomorrow.text}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ReviewPage() {
   const router = useRouter();
@@ -41,6 +187,8 @@ export default function ReviewPage() {
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -66,6 +214,18 @@ export default function ReviewPage() {
       })
       .catch(err => console.error('タスク取得エラー:', err));
   }, [user]);
+
+  const handleDayTap = (date: string) => {
+    setSelectedDate(date);
+    setOpenDates(prev => ({ ...prev, [date]: true }));
+    setTimeout(() => {
+      document.getElementById(`entry-${date}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  };
+
+  const toggleDate = (date: string) => {
+    setOpenDates(prev => ({ ...prev, [date]: !prev[date] }));
+  };
 
   if (loading || fetching) {
     return (
@@ -94,7 +254,7 @@ export default function ReviewPage() {
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
         <h1 style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0 }}>
-          📊 分析・振り返り
+          分析・振り返り
         </h1>
       </header>
 
@@ -120,34 +280,22 @@ export default function ReviewPage() {
                 ? Math.ceil((new Date(t.deadline).getTime() - now.getTime()) / 86400000)
                 : null;
               return (
-                <div key={t.id} style={{
-                  background: COLORS.inkRaised, borderRadius: 10,
-                  padding: '12px 14px', borderLeft: `3px solid ${color}`,
-                  opacity: t.status === 'done' ? 0.75 : 1,
-                }}>
+                <div key={t.id} style={{ background: COLORS.inkRaised, borderRadius: 10, padding: '12px 14px', borderLeft: `3px solid ${color}`, opacity: t.status === 'done' ? 0.75 : 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <p style={{ color: COLORS.chalk, fontSize: 14, margin: 0, fontFamily: 'Zen Kaku Gothic New', fontWeight: t.status === 'active' ? 700 : 400 }}>
                       {t.title}
                     </p>
-                    <span style={{
-                      color: color, fontSize: 11, fontFamily: 'Zen Kaku Gothic New',
-                      padding: '2px 8px', borderRadius: 4,
-                      border: `1px solid ${color}50`,
-                    }}>
+                    <span style={{ color, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', padding: '2px 8px', borderRadius: 4, border: `1px solid ${color}50` }}>
                       {TASK_STATUS_LABEL[t.status]}
                     </span>
                   </div>
                   {t.why && (
-                    <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 4px', fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.5 }}>
-                      {t.why}
-                    </p>
+                    <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 4px', fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.5 }}>{t.why}</p>
                   )}
                   {t.deadline && (
                     <p style={{ color: daysLeft !== null && daysLeft < 3 && t.status === 'active' ? COLORS.alert : COLORS.muted, fontSize: 11, margin: 0, fontFamily: 'Roboto Mono' }}>
                       期限: {t.deadline}
-                      {daysLeft !== null && t.status !== 'done' && (
-                        <span style={{ marginLeft: 8 }}>残り {daysLeft} 日</span>
-                      )}
+                      {daysLeft !== null && t.status !== 'done' && <span style={{ marginLeft: 8 }}>残り {daysLeft} 日</span>}
                     </p>
                   )}
                 </div>
@@ -156,20 +304,25 @@ export default function ReviewPage() {
           </div>
           <button
             onClick={() => router.push('/tasks')}
-            style={{ marginTop: 10, background: 'transparent', border: `1px solid #3A3D55`, color: COLORS.muted, borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
+            style={{ marginTop: 10, background: 'transparent', border: '1px solid #3A3D55', color: COLORS.muted, borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
           >
             タスクを管理する →
           </button>
         </section>
       )}
 
-      {/* カレンダーヒートマップ（常に表示） */}
-      <section>
-        <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* カレンダーヒートマップ */}
+      <section style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <FontAwesomeIcon icon={faCalendarDays} style={{ color: COLORS.sprout, fontSize: 14 }} />
-          記録カレンダー
-        </h2>
-        <CalendarHeatmap entries={entries} />
+          <span style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho' }}>記録カレンダー</span>
+        </div>
+        <CalendarHeatmap entries={entries} onDayTap={handleDayTap} selectedDate={selectedDate} />
+        {selectedDate && (
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '8px 0 0', fontFamily: 'Zen Kaku Gothic New' }}>
+            {selectedDate} の記録を下のログに表示しています
+          </p>
+        )}
       </section>
 
       {/* 記録なし → 空状態 */}
@@ -178,19 +331,13 @@ export default function ReviewPage() {
           <span style={{ fontSize: 48 }}>
             <FontAwesomeIcon icon={faFaceMeh} style={{ color: COLORS.muted }} />
           </span>
-          <p style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', margin: 0, lineHeight: 1.8 }}>
-            まだ記録がありません
-          </p>
+          <p style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', margin: 0, lineHeight: 1.8 }}>まだ記録がありません</p>
           <p style={{ color: COLORS.muted, fontSize: 13, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.7 }}>
-            今日の記録をはじめると<br />カレンダーとグラフが表示されます ✨
+            今日の記録をはじめると<br />カレンダーとグラフが表示されます
           </p>
           <button
             onClick={() => router.push('/record')}
-            style={{
-              background: COLORS.sprout, color: COLORS.ink, border: 'none',
-              borderRadius: 10, padding: '12px 28px', fontSize: 15, cursor: 'pointer',
-              fontFamily: 'Zen Kaku Gothic New', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8,
-            }}
+            style={{ background: COLORS.sprout, color: COLORS.ink, border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 15, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}
           >
             <FontAwesomeIcon icon={faPenToSquare} />
             今日を記録する
@@ -198,9 +345,64 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {/* 記録あり → グラフ類 */}
+      {/* 記録あり */}
       {hasEntries && (
         <>
+          {/* 記録ログ（日別ブロック） */}
+          <section>
+            <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12 }}>
+              記録ログ
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {entries.map(entry => {
+                const isOpen = openDates[entry.logicalDate] ?? false;
+                const isSelected = selectedDate === entry.logicalDate;
+                return (
+                  <div
+                    key={entry.logicalDate}
+                    id={`entry-${entry.logicalDate}`}
+                    style={{
+                      background: COLORS.inkRaised, borderRadius: 10,
+                      border: `1px solid ${isSelected ? COLORS.sprout : '#2A2D45'}`,
+                      overflow: 'hidden',
+                      scrollMarginTop: 16,
+                    }}
+                  >
+                    <button
+                      onClick={() => toggleDate(entry.logicalDate)}
+                      style={{
+                        width: '100%', background: 'none', border: 'none',
+                        padding: '12px 14px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ color: isSelected ? COLORS.sprout : COLORS.muted, fontSize: 12, fontFamily: 'Roboto Mono' }}>
+                          {entry.logicalDate}
+                        </span>
+                        <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New' }}>
+                          達成 {entry.achievement ?? '—'}　満足 {entry.satisfaction ?? '—'}
+                        </span>
+                        {entry.backfilled && (
+                          <span style={{ color: COLORS.muted, fontSize: 10, fontFamily: 'Zen Kaku Gothic New', background: '#2A2D45', padding: '1px 6px', borderRadius: 4 }}>遡り</span>
+                        )}
+                      </div>
+                      <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                        {isOpen ? '隠す' : '表示する'}
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div style={{ padding: '0 14px 14px', borderTop: '1px solid #2A2D45' }}>
+                        <EntryDetailContent entry={entry} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           {/* 推移グラフ */}
           <section>
             <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -212,40 +414,9 @@ export default function ReviewPage() {
             </div>
           </section>
 
-          {/* 傾向分析（データ十分な場合のみ内部で表示） */}
+          {/* 傾向分析 */}
           {divergence.length > 0 && (
             <AxisCompareChart divergence={divergence} high={high} low={low} />
-          )}
-
-          {/* 振り返りメモ */}
-          {entries.some(e => e.reflection?.insight || e.reflection?.challenge) && (
-            <section>
-              <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12 }}>
-                💭 振り返りメモ
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {entries
-                  .filter(e => e.reflection?.insight || e.reflection?.challenge)
-                  .slice(0, 10)
-                  .map(e => (
-                    <div key={e.logicalDate} style={{ background: COLORS.inkRaised, borderRadius: 8, padding: '12px 14px' }}>
-                      <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px', fontFamily: 'Roboto Mono' }}>
-                        {e.logicalDate}
-                      </p>
-                      {e.reflection.insight && (
-                        <p style={{ color: COLORS.chalk, fontSize: 13, margin: '0 0 4px', fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.6 }}>
-                          💡 {e.reflection.insight}
-                        </p>
-                      )}
-                      {e.reflection.challenge && (
-                        <p style={{ color: COLORS.muted, fontSize: 13, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.6 }}>
-                          🌱 {e.reflection.challenge}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </section>
           )}
         </>
       )}
