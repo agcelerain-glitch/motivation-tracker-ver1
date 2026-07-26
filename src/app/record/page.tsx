@@ -28,6 +28,7 @@ export default function RecordPage() {
   const [prevTomorrow, setPrevTomorrow] = useState<TomorrowPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [selectedTaskTitle] = useState<string | null>(
     () => typeof window !== 'undefined' ? sessionStorage.getItem('selectedTaskTitle') : null
   );
@@ -50,6 +51,8 @@ export default function RecordPage() {
     if (draft.currentStep === 0) { router.push('/'); return; }
     draft.setStep(draft.currentStep - 1);
   };
+  const handleHomeExitConfirm = () => { draft.reset(); router.push('/'); };
+  const onHomeExit = () => setShowExitConfirm(true);
 
   const handleSubmit = async () => {
     if (!user) return;
@@ -95,22 +98,10 @@ export default function RecordPage() {
 
   const step = draft.currentStep;
 
-  // TOTAL 以上のステップ = 確認・送信画面（進捗バー外）
-  if (step >= TOTAL) {
-    return (
-      <ReviewSubmit
-        submitting={submitting}
-        error={submitError}
-        onBack={() => draft.setStep(TOTAL - 1)}
-        onConfirm={handleSubmit}
-      />
-    );
-  }
-
   const renderStep = () => {
     if (step === 0) {
       return (
-        <StepShell step={1} total={TOTAL} onBack={goBack}>
+        <StepShell step={1} total={TOTAL} onBack={goBack} onHomeExit={onHomeExit}>
           {selectedTaskTitle && (
             <div style={{ background: '#1A2A28', border: `1px solid ${COLORS.sprout}40`, borderRadius: 8, padding: '8px 12px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 14 }}>🎯</span>
@@ -145,7 +136,7 @@ export default function RecordPage() {
 
     if (step === 1) {
       return (
-        <StepShell step={2} total={TOTAL} onBack={goBack}>
+        <StepShell step={2} total={TOTAL} onBack={goBack} onHomeExit={onHomeExit}>
           <LevelPicker
             label="今日の満足度"
             value={draft.satisfaction}
@@ -157,7 +148,7 @@ export default function RecordPage() {
 
     if (step === 2) {
       return (
-        <StepShell step={3} total={TOTAL} onBack={goBack}>
+        <StepShell step={3} total={TOTAL} onBack={goBack} onHomeExit={onHomeExit}>
           <p style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', marginBottom: 20 }}>喜怒哀楽</p>
           <EmotionPicker value={draft.emotions} onChange={(v: Emotion[]) => draft.setEmotions(v)} />
           <button
@@ -172,7 +163,7 @@ export default function RecordPage() {
 
     if (step === 3) {
       return (
-        <StepShell step={4} total={TOTAL} onBack={goBack} onSkip={() => { draft.setDid({ tags: [], note: null, skipped: true }); goNext(); }}>
+        <StepShell step={4} total={TOTAL} onBack={goBack} onSkip={() => { draft.setDid({ tags: [], note: null, skipped: true }); goNext(); }} onHomeExit={onHomeExit}>
           <TagNoteInput
             label="やったこと"
             presets={DID_PRESETS}
@@ -192,7 +183,7 @@ export default function RecordPage() {
 
     if (step === 4) {
       return (
-        <StepShell step={5} total={TOTAL} onBack={goBack} onSkip={() => { draft.setDidnt({ tags: [], note: null, skipped: true }); goNext(); }}>
+        <StepShell step={5} total={TOTAL} onBack={goBack} onSkip={() => { draft.setDidnt({ tags: [], note: null, skipped: true }); goNext(); }} onHomeExit={onHomeExit}>
           <TagNoteInput
             label="できなかったこと"
             presets={DIDNT_PRESETS}
@@ -214,7 +205,7 @@ export default function RecordPage() {
     if (step >= axisStartStep && step < axisEndStep) {
       const axis = currentAxes[step - axisStartStep];
       return (
-        <StepShell key={axis.id} step={step + 1} total={TOTAL} onBack={goBack} onSkip={() => { draft.setAxis(axis.id as AxisId, null); goNext(); }}>
+        <StepShell key={axis.id} step={step + 1} total={TOTAL} onBack={goBack} onSkip={() => { draft.setAxis(axis.id as AxisId, null); goNext(); }} onHomeExit={onHomeExit}>
           <RadialBandPicker
             poleA={axis.poleA}
             poleB={axis.poleB}
@@ -230,7 +221,7 @@ export default function RecordPage() {
     const reflectionStep = axisEndStep;
     if (step === reflectionStep) {
       return (
-        <StepShell step={step + 1} total={TOTAL} onBack={goBack}>
+        <StepShell step={step + 1} total={TOTAL} onBack={goBack} onHomeExit={onHomeExit}>
           <ReflectionStep
             value={draft.reflection}
             onChange={v => draft.setReflection(v)}
@@ -244,7 +235,7 @@ export default function RecordPage() {
     const tomorrowStep = reflectionStep + 1;
     if (step === tomorrowStep) {
       return (
-        <StepShell step={step + 1} total={TOTAL} onBack={goBack}>
+        <StepShell step={step + 1} total={TOTAL} onBack={goBack} onHomeExit={onHomeExit}>
           <TomorrowStep
             value={draft.tomorrow}
             prevTomorrow={prevTomorrow}
@@ -260,10 +251,70 @@ export default function RecordPage() {
   };
 
   return (
-    <AnimatePresence mode="wait">
-      <div key={step}>
-        {renderStep()}
-      </div>
-    </AnimatePresence>
+    <>
+      {step >= TOTAL ? (
+        <ReviewSubmit
+          submitting={submitting}
+          error={submitError}
+          onBack={() => draft.setStep(TOTAL - 1)}
+          onConfirm={handleSubmit}
+          onHomeExit={onHomeExit}
+        />
+      ) : (
+        <AnimatePresence mode="wait">
+          <div key={step}>
+            {renderStep()}
+          </div>
+        </AnimatePresence>
+      )}
+
+      {/* ホームへ戻る確認ダイアログ */}
+      {showExitConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(22, 24, 43, 0.88)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 100, padding: '0 24px',
+        }}>
+          <div style={{
+            background: COLORS.inkRaised, borderRadius: 16,
+            padding: '28px 24px', width: '100%', maxWidth: 340,
+            border: '1px solid #3A3D55',
+          }}>
+            <p style={{ color: COLORS.chalk, fontSize: 18, fontFamily: 'Shippori Mincho', margin: '0 0 12px', lineHeight: 1.4 }}>
+              ホームへ戻りますか？
+            </p>
+            <p style={{ color: COLORS.muted, fontSize: 13, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 24px', lineHeight: 1.7 }}>
+              現在の記録は保持されません。<br />
+              入力した内容はすべて失われます。
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                style={{
+                  flex: 1, background: 'transparent',
+                  border: '1px solid #3A3D55', color: COLORS.muted,
+                  borderRadius: 10, padding: '13px', fontSize: 14,
+                  cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New',
+                }}
+              >
+                記録を続ける
+              </button>
+              <button
+                onClick={handleHomeExitConfirm}
+                style={{
+                  flex: 1, background: '#2A1A1F',
+                  border: `1px solid ${COLORS.alert}60`, color: COLORS.alert,
+                  borderRadius: 10, padding: '13px', fontSize: 14,
+                  cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New',
+                  fontWeight: 700,
+                }}
+              >
+                ホームへ戻る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

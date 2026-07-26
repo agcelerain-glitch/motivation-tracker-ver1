@@ -1,5 +1,7 @@
 'use client';
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHouse } from '@fortawesome/free-solid-svg-icons';
 import { useDraftStore } from '@/store/draftStore';
 import { AXES } from '@/config/axes';
 import { BAND_COLORS, COLORS } from '@/config/design';
@@ -14,9 +16,10 @@ interface Props {
   error: string | null;
   onBack: () => void;
   onConfirm: () => void;
+  onHomeExit?: () => void;
 }
 
-export default function ReviewSubmit({ submitting, error, onBack, onConfirm }: Props) {
+export default function ReviewSubmit({ submitting, error, onBack, onConfirm, onHomeExit }: Props) {
   const draft = useDraftStore();
 
   const now = new Date();
@@ -53,16 +56,25 @@ export default function ReviewSubmit({ submitting, error, onBack, onConfirm }: P
       <header style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #2A2D45', flexShrink: 0 }}>
         <button
           onClick={onBack}
-          style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 22, cursor: 'pointer', padding: '4px 8px', lineHeight: 1 }}
+          style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 22, cursor: 'pointer', padding: '4px 8px', lineHeight: 1, flexShrink: 0 }}
         >
           ←
         </button>
-        <div>
+        <div style={{ flex: 1 }}>
           <p style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', margin: 0 }}>記録の確認</p>
           <p style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Roboto Mono', margin: '2px 0 0' }}>
             {dateStr} {timeStr} · {draft.mode === 'quick' ? 'クイック' : 'じっくり'}
           </p>
         </div>
+        {onHomeExit && (
+          <button
+            onClick={onHomeExit}
+            style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 16, cursor: 'pointer', padding: '4px', flexShrink: 0, lineHeight: 1 }}
+            aria-label="ホームへ戻る"
+          >
+            <FontAwesomeIcon icon={faHouse} />
+          </button>
+        )}
       </header>
 
       {/* Scrollable content */}

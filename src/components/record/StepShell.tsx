@@ -1,5 +1,7 @@
 'use client';
 import { motion } from 'framer-motion';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHouse } from '@fortawesome/free-solid-svg-icons';
 import { COLORS } from '@/config/design';
 
 interface Props {
@@ -7,10 +9,11 @@ interface Props {
   total: number;
   onBack: () => void;
   onSkip?: () => void;
+  onHomeExit?: () => void;
   children: React.ReactNode;
 }
 
-export default function StepShell({ step, total, onBack, onSkip, children }: Props) {
+export default function StepShell({ step, total, onBack, onSkip, onHomeExit, children }: Props) {
   return (
     <motion.div
       initial={{ x: 40, opacity: 0 }}
@@ -22,23 +25,25 @@ export default function StepShell({ step, total, onBack, onSkip, children }: Pro
         display: 'flex', flexDirection: 'column', padding: '0 0 32px',
       }}
     >
+      {/* ヘッダー: [← 戻る] [進捗バー] [⌂ ホーム] */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center',
         padding: '16px 20px 8px', gap: 8,
       }}>
         <button
           onClick={onBack}
-          style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 24, cursor: 'pointer', padding: 4 }}
-          aria-label="戻る"
+          style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 24, cursor: 'pointer', padding: 4, flexShrink: 0 }}
+          aria-label="前のステップへ戻る"
         >
           ←
         </button>
+
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ height: 4, background: '#2A2D45', borderRadius: 2, overflow: 'hidden' }}>
             <div
               style={{
                 height: '100%', background: COLORS.sprout, borderRadius: 2,
-                width: `${((step) / total) * 100}%`,
+                width: `${(step / total) * 100}%`,
                 transition: 'width 0.2s',
               }}
             />
@@ -47,6 +52,16 @@ export default function StepShell({ step, total, onBack, onSkip, children }: Pro
             {step} / {total}
           </span>
         </div>
+
+        {onHomeExit && (
+          <button
+            onClick={onHomeExit}
+            style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 16, cursor: 'pointer', padding: '4px 4px 4px 8px', flexShrink: 0, lineHeight: 1 }}
+            aria-label="ホームへ戻る"
+          >
+            <FontAwesomeIcon icon={faHouse} />
+          </button>
+        )}
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '8px 20px' }}>
