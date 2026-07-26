@@ -125,22 +125,58 @@ function EntryDetailContent({ entry }: { entry: Entry }) {
       {/* 軸スコア */}
       {axesToShow.length > 0 && (
         <div>
-          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px', fontFamily: 'Zen Kaku Gothic New' }}>軸スコア</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 8px', fontFamily: 'Zen Kaku Gothic New' }}>軸スコア</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {axesToShow.map(axisDef => {
               const band = axes[axisDef.id];
               if (band === undefined) return null;
-              const bandColor = band !== null ? BAND_COLORS[band - 1].hex : COLORS.muted;
-              const poleLabel = band !== null ? (band <= 3 ? axisDef.poleA : axisDef.poleB) : null;
               return (
-                <div key={axisDef.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', flex: 1, minWidth: 120 }}>
+                <div key={axisDef.id}>
+                  {/* 質問文 */}
+                  <p style={{ color: COLORS.muted, fontSize: 10, margin: '0 0 4px', fontFamily: 'Zen Kaku Gothic New' }}>
                     {axisDef.question}
-                  </span>
+                  </p>
                   {band !== null ? (
-                    <span style={{ color: bandColor, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', background: `${bandColor}20`, padding: '2px 8px', borderRadius: 10, border: `1px solid ${bandColor}50`, whiteSpace: 'nowrap' }}>
-                      {poleLabel} ({band})
-                    </span>
+                    /* 6段階ビジュアルバー */
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {/* 左ラベル（poleA 側 = バンド 1〜3 の場合のみ表示） */}
+                      <div style={{ flex: 1, textAlign: 'right', overflow: 'hidden' }}>
+                        {band <= 3 && (
+                          <span style={{
+                            color: BAND_COLORS[band - 1].hex,
+                            fontSize: 11, fontFamily: 'Zen Kaku Gothic New',
+                            display: 'inline-block', maxWidth: '100%',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {axisDef.poleA}
+                          </span>
+                        )}
+                      </div>
+                      {/* 6マス */}
+                      <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                        {([1,2,3,4,5,6] as const).map(i => (
+                          <div key={i} style={{
+                            width: 14, height: 14, borderRadius: 3,
+                            background: i === band
+                              ? BAND_COLORS[i - 1].hex
+                              : '#3A3D55',
+                          }} />
+                        ))}
+                      </div>
+                      {/* 右ラベル（poleB 側 = バンド 4〜6 の場合のみ表示） */}
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        {band >= 4 && (
+                          <span style={{
+                            color: BAND_COLORS[band - 1].hex,
+                            fontSize: 11, fontFamily: 'Zen Kaku Gothic New',
+                            display: 'inline-block', maxWidth: '100%',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {axisDef.poleB}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   ) : (
                     <span style={{ color: COLORS.muted, fontSize: 11 }}>わからない</span>
                   )}
