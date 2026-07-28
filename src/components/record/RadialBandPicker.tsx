@@ -223,16 +223,6 @@ export default function RadialBandPicker({ poleA, poleB, question, value, onChan
         </div>
       </div>
 
-      <button
-        onClick={() => onChange(null)}
-        style={{
-          marginTop: 8, background: 'transparent', color: '#7A7F9A',
-          border: '1px solid #7A7F9A', borderRadius: 20, padding: '6px 20px',
-          fontSize: 13, fontFamily: 'Zen Kaku Gothic New', cursor: 'pointer',
-        }}
-      >
-        わからない
-      </button>
     </div>
   );
 }

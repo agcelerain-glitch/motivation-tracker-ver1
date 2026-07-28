@@ -38,7 +38,6 @@ export default function HomePage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
   const [tasks, setTasks] = useState<ActiveTask[]>([]);
-  const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [prevEntry, setPrevEntry] = useState<Entry | null>(null);
   const configChecks = checkFirebaseConfig();
   const configOk = allConfigOk();
@@ -125,14 +124,8 @@ export default function HomePage() {
   };
 
   const handleStartRecord = () => {
-    if (selectedTaskId) {
-      sessionStorage.setItem('selectedTaskId', selectedTaskId);
-      const task = tasks.find(t => t.id === selectedTaskId);
-      if (task) sessionStorage.setItem('selectedTaskTitle', task.title);
-    } else {
-      sessionStorage.removeItem('selectedTaskId');
-      sessionStorage.removeItem('selectedTaskTitle');
-    }
+    sessionStorage.removeItem('selectedTaskId');
+    sessionStorage.removeItem('selectedTaskTitle');
     router.push('/record');
   };
 
@@ -246,56 +239,29 @@ export default function HomePage() {
         </button>
       </header>
 
-      {/* タスクセレクター */}
-      <section style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px' }}>
-        <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <FontAwesomeIcon icon={faBullseye} style={{ color: COLORS.sprout }} />
-          今日はどのタスクに取り組む？
-        </p>
-
-        {tasks.length === 0 ? (
-          /* アクティブタスクなし → 警告 */
-          <div style={{ background: '#2A2415', border: '1px solid #6A5A20', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <p style={{ color: '#D4B840', fontSize: 13, fontFamily: 'Zen Kaku Gothic New', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FontAwesomeIcon icon={faTriangleExclamation} />
-              目標が設定されていません
-            </p>
-            <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.6 }}>
-              目標と期限を設定してください。<br />設定すると記録を開始できます。
-            </p>
-            <button
-              onClick={() => router.push('/tasks')}
-              style={{
-                background: 'transparent', border: '1px solid #6A5A20', color: '#D4B840',
-                borderRadius: 8, padding: '9px 16px', fontSize: 13, cursor: 'pointer',
-                fontFamily: 'Zen Kaku Gothic New', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-              }}
-            >
-              <FontAwesomeIcon icon={faBullseye} />
-              目標を設定する →
-            </button>
-          </div>
-        ) : (
-          /* タスクあり → リスト表示 */
+      {/* 進行中タスク（表示のみ・常時点灯） */}
+      {tasks.length > 0 && (
+        <section style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px' }}>
+          <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FontAwesomeIcon icon={faBullseye} style={{ color: COLORS.sprout }} />
+            進行中のタスク
+          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {tasks.map(t => {
               const daysLeft = t.deadline
                 ? Math.ceil((new Date(t.deadline).getTime() - now.getTime()) / 86400000)
                 : null;
-              const isSelected = selectedTaskId === t.id;
               return (
-                <button
+                <div
                   key={t.id}
-                  onClick={() => setSelectedTaskId(isSelected ? '' : t.id)}
                   style={{
-                    width: '100%', background: isSelected ? '#1E2E2A' : '#2A2D45',
-                    border: `1px solid ${isSelected ? COLORS.sprout : '#3A3D55'}`,
-                    borderRadius: 10, padding: '12px 14px', cursor: 'pointer',
+                    background: '#1E2E2A',
+                    border: `1px solid ${COLORS.sprout}`,
+                    borderRadius: 10, padding: '12px 14px',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    textAlign: 'left',
                   }}
                 >
-                  <span style={{ color: isSelected ? COLORS.chalk : COLORS.muted, fontSize: 14, fontFamily: 'Zen Kaku Gothic New', fontWeight: isSelected ? 700 : 400 }}>
+                  <span style={{ color: COLORS.chalk, fontSize: 14, fontFamily: 'Zen Kaku Gothic New', fontWeight: 700 }}>
                     {t.title}
                   </span>
                   {daysLeft !== null && (
@@ -303,12 +269,12 @@ export default function HomePage() {
                       残り{daysLeft}日
                     </span>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* 今日やること（前日の「明日のやること」） */}
       {prevEntry?.tomorrow?.text && !prevEntry.tomorrow.skipped && (
@@ -322,51 +288,49 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 今日の記録ボタン（タスクあり時のみ表示） */}
-      {tasks.length > 0 && (
-        <section>
-          {todayEntry ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 28 }}>
-                  <FontAwesomeIcon icon={faCircleCheck} style={{ color: COLORS.sprout }} />
-                </span>
-                <div>
-                  <p style={{ color: COLORS.chalk, fontSize: 14, fontFamily: 'Zen Kaku Gothic New', margin: 0 }}>今日の記録済み</p>
-                  <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Roboto Mono', margin: '2px 0 0' }}>
-                    ⭐ 達成度 {todayEntry.achievement ?? '—'} &nbsp;／&nbsp; 💙 満足度 {todayEntry.satisfaction ?? '—'}
-                  </p>
-                </div>
+      {/* 今日の記録ボタン */}
+      <section>
+        {todayEntry ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 28 }}>
+                <FontAwesomeIcon icon={faCircleCheck} style={{ color: COLORS.sprout }} />
+              </span>
+              <div>
+                <p style={{ color: COLORS.chalk, fontSize: 14, fontFamily: 'Zen Kaku Gothic New', margin: 0 }}>今日の記録済み</p>
+                <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Roboto Mono', margin: '2px 0 0' }}>
+                  ⭐ 達成度 {todayEntry.achievement ?? '—'} &nbsp;／&nbsp; 💙 満足度 {todayEntry.satisfaction ?? '—'}
+                </p>
               </div>
-              <button
-                onClick={handleStartRecord}
-                style={{
-                  width: '100%', background: 'transparent', border: `1px solid ${COLORS.sprout}`, color: COLORS.sprout,
-                  borderRadius: 12, padding: '14px', fontSize: 15, cursor: 'pointer',
-                  fontFamily: 'Zen Kaku Gothic New', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                }}
-              >
-                <FontAwesomeIcon icon={faRotateLeft} />
-                記録を上書きする
-              </button>
             </div>
-          ) : (
             <button
               onClick={handleStartRecord}
               style={{
-                width: '100%', background: COLORS.sprout, color: COLORS.ink, border: 'none',
-                borderRadius: 14, padding: '18px', fontSize: 18, cursor: 'pointer',
-                fontFamily: 'Zen Kaku Gothic New', fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-                boxShadow: `0 4px 20px ${COLORS.sprout}40`,
+                width: '100%', background: 'transparent', border: `1px solid ${COLORS.sprout}`, color: COLORS.sprout,
+                borderRadius: 12, padding: '14px', fontSize: 15, cursor: 'pointer',
+                fontFamily: 'Zen Kaku Gothic New', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               }}
             >
-              <FontAwesomeIcon icon={faPenToSquare} />
-              今日を記録する
+              <FontAwesomeIcon icon={faRotateLeft} />
+              記録を上書きする
             </button>
-          )}
-        </section>
-      )}
+          </div>
+        ) : (
+          <button
+            onClick={handleStartRecord}
+            style={{
+              width: '100%', background: COLORS.sprout, color: COLORS.ink, border: 'none',
+              borderRadius: 14, padding: '18px', fontSize: 18, cursor: 'pointer',
+              fontFamily: 'Zen Kaku Gothic New', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              boxShadow: `0 4px 20px ${COLORS.sprout}40`,
+            }}
+          >
+            <FontAwesomeIcon icon={faPenToSquare} />
+            今日を記録する
+          </button>
+        )}
+      </section>
 
       {/* 明日やること（今日の記録から） */}
       {todayEntry?.tomorrow?.text && !todayEntry.tomorrow.skipped && (

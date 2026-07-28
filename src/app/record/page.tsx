@@ -29,9 +29,6 @@ export default function RecordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [selectedTaskTitle] = useState<string | null>(
-    () => typeof window !== 'undefined' ? sessionStorage.getItem('selectedTaskTitle') : null
-  );
 
   const quickAxes = AXES.filter(a => a.mode === 'quick');
   const deepAxes  = AXES.filter(a => a.mode === 'deep');
@@ -102,12 +99,6 @@ export default function RecordPage() {
     if (step === 0) {
       return (
         <StepShell step={1} total={TOTAL} onBack={goBack} onHomeExit={onHomeExit}>
-          {selectedTaskTitle && (
-            <div style={{ background: '#1A2A28', border: `1px solid ${COLORS.sprout}40`, borderRadius: 8, padding: '8px 12px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14 }}>🎯</span>
-              <p style={{ color: COLORS.sprout, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: 0 }}>{selectedTaskTitle}</p>
-            </div>
-          )}
           <LevelPicker
             label="今日の達成度"
             value={draft.achievement}
@@ -169,7 +160,6 @@ export default function RecordPage() {
             presets={DID_PRESETS}
             value={draft.did}
             onChange={v => draft.setDid(v)}
-            yesterdayTomorrow={prevTomorrow?.text ?? null}
           />
           <button
             onClick={goNext}
