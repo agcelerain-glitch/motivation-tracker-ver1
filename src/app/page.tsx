@@ -240,12 +240,34 @@ export default function HomePage() {
       </header>
 
       {/* 進行中タスク（表示のみ・常時点灯） */}
-      {tasks.length > 0 && (
-        <section style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px' }}>
-          <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <FontAwesomeIcon icon={faBullseye} style={{ color: COLORS.sprout }} />
-            進行中のタスク
-          </p>
+      <section style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px' }}>
+        <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FontAwesomeIcon icon={faBullseye} style={{ color: COLORS.sprout }} />
+          進行中のタスク
+        </p>
+
+        {tasks.length === 0 ? (
+          <div style={{ background: '#2A2415', border: '1px solid #6A5A20', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ color: '#D4B840', fontSize: 13, fontFamily: 'Zen Kaku Gothic New', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FontAwesomeIcon icon={faTriangleExclamation} />
+              目標が設定されていません
+            </p>
+            <p style={{ color: COLORS.muted, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.6 }}>
+              目標と期限を設定すると記録を開始できます。
+            </p>
+            <button
+              onClick={() => router.push('/tasks')}
+              style={{
+                background: 'transparent', border: '1px solid #6A5A20', color: '#D4B840',
+                borderRadius: 8, padding: '9px 16px', fontSize: 13, cursor: 'pointer',
+                fontFamily: 'Zen Kaku Gothic New', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+              }}
+            >
+              <FontAwesomeIcon icon={faBullseye} />
+              目標を設定する →
+            </button>
+          </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {tasks.map(t => {
               const daysLeft = t.deadline
@@ -273,8 +295,8 @@ export default function HomePage() {
               );
             })}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* 今日やること（前日の「明日のやること」） */}
       {prevEntry?.tomorrow?.text && !prevEntry.tomorrow.skipped && (
@@ -288,8 +310,8 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 今日の記録ボタン */}
-      <section>
+      {/* 今日の記録ボタン（タスクあり時のみ表示） */}
+      {tasks.length > 0 && <section>
         {todayEntry ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ background: COLORS.inkRaised, borderRadius: 14, padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -330,7 +352,7 @@ export default function HomePage() {
             今日を記録する
           </button>
         )}
-      </section>
+      </section>}
 
       {/* 明日やること（今日の記録から） */}
       {todayEntry?.tomorrow?.text && !todayEntry.tomorrow.skipped && (

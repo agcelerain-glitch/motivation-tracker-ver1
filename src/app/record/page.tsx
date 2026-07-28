@@ -160,6 +160,7 @@ export default function RecordPage() {
             presets={DID_PRESETS}
             value={draft.did}
             onChange={v => draft.setDid(v)}
+            yesterdayTomorrow={prevTomorrow?.text ?? null}
           />
           <button
             onClick={goNext}
@@ -179,6 +180,7 @@ export default function RecordPage() {
             presets={DIDNT_PRESETS}
             value={draft.didnt}
             onChange={v => draft.setDidnt(v)}
+            yesterdayTomorrow={prevTomorrow?.text ?? null}
           />
           <button
             onClick={goNext}
