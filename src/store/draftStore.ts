@@ -1,7 +1,7 @@
 'use client';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Level, Band, Emotion, AxisId } from '@/types/entry';
+import type { Level, Band, Emotion, AxisId, SleepQuality } from '@/types/entry';
 import { getLogicalDate } from '@/lib/date';
 
 interface DraftState {
@@ -14,7 +14,7 @@ interface DraftState {
   did: { tags: string[]; note: string | null; skipped: boolean };
   didnt: { tags: string[]; note: string | null; skipped: boolean };
   axes: Partial<Record<AxisId, Band | null>>;
-  reflection: { insight: string | null; challenge: string | null; skipped: boolean };
+  reflection: { sleep: SleepQuality | null; insight: string | null; challenge: string | null; skipped: boolean };
   tomorrow: {
     text: string | null;
     carriedOver: boolean;
@@ -49,7 +49,7 @@ const defaultDraft = (): Omit<DraftState, keyof Pick<DraftState,
   did:   { tags: [], note: null, skipped: false },
   didnt: { tags: [], note: null, skipped: false },
   axes: {},
-  reflection: { insight: null, challenge: null, skipped: false },
+  reflection: { sleep: null, insight: null, challenge: null, skipped: false },
   tomorrow: { text: null, carriedOver: false, carryOverCount: 0, nudgeShown: false, nudgeChoice: null, skipped: false },
 });
 

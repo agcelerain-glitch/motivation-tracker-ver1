@@ -10,8 +10,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChartLine, faCalendarDays, faArrowLeft, faPenToSquare, faFaceMeh, faBullseye, faBrain, faRotate } from '@fortawesome/free-solid-svg-icons';
 import { COLORS, BAND_COLORS } from '@/config/design';
 import { AXES } from '@/config/axes';
-import { groupByHighLow, computeAxisDivergence, getTrendStage } from '@/lib/analysis';
+import { groupByHighLow, computeAxisDivergence, getTrendStage, computeAxisPairAnalysis, computeSleepAxisAnalysis } from '@/lib/analysis';
 import type { Entry } from '@/types/entry';
+import AxisCrossChart from '@/components/review/AxisCrossChart';
 import CalendarHeatmap from '@/components/review/CalendarHeatmap';
 import TrendChart from '@/components/review/TrendChart';
 import AxisCompareChart from '@/components/review/AxisCompareChart';
@@ -187,6 +188,28 @@ function EntryDetailContent({ entry }: { entry: Entry }) {
         </div>
       )}
 
+      {/* 睡眠 */}
+      {entry.reflection?.sleep && (() => {
+        const sleepConfig = {
+          good:   { label: '熟睡',  color: '#5FB49C' },
+          normal: { label: 'ふつう', color: '#7A7F9A' },
+          poor:   { label: '寝不足', color: '#8A7BC8' },
+        }[entry.reflection.sleep];
+        return (
+          <div>
+            <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 4px', fontFamily: 'Zen Kaku Gothic New' }}>昨夜の睡眠</p>
+            <span style={{
+              background: `${sleepConfig.color}22`,
+              color: sleepConfig.color,
+              fontSize: 13, padding: '3px 14px', borderRadius: 20,
+              fontFamily: 'Zen Kaku Gothic New', border: `1px solid ${sleepConfig.color}50`,
+            }}>
+              {sleepConfig.label}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* 気づき・挑戦 */}
       {!entry.reflection?.skipped && (entry.reflection?.insight || entry.reflection?.challenge) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -349,6 +372,9 @@ export default function ReviewPage() {
     ? groupByHighLow(entries, 'satisfaction', currentThreshold)
     : { high: [], low: [] };
   const divergence = high.length > 0 && low.length > 0 ? computeAxisDivergence(high, low) : [];
+  // 全記録を使って相関を計算（多いほど精度が上がる）
+  const axisPairs   = hasEntries ? computeAxisPairAnalysis(entries) : [];
+  const sleepAxes   = hasEntries ? computeSleepAxisAnalysis(entries) : [];
 
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.ink, padding: '24px 16px 48px', display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -534,6 +560,9 @@ export default function ReviewPage() {
             onRefresh={handleRefreshTrend}
             refreshing={refreshingTrend}
           />
+
+          {/* 軸の相関 */}
+          <AxisCrossChart pairs={axisPairs} sleepAxes={sleepAxes} totalEntries={totalEntries} />
 
           {/* AI観察メモ */}
           <section>

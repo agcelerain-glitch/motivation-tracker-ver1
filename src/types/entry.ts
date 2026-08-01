@@ -20,7 +20,10 @@ export interface TagNote {
   skipped: boolean;
 }
 
+export type SleepQuality = 'good' | 'normal' | 'poor';
+
 export interface Reflection {
+  sleep: SleepQuality | null; // null = 未選択（旧エントリは undefined）
   insight: string | null;
   challenge: string | null;
   skipped: boolean;

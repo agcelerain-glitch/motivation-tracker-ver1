@@ -218,7 +218,7 @@ export default function RecordPage() {
             value={draft.reflection}
             onChange={v => draft.setReflection(v)}
             onNext={goNext}
-            onSkip={() => { draft.setReflection({ insight: null, challenge: null, skipped: true }); goNext(); }}
+            onSkip={() => { draft.setReflection({ sleep: draft.reflection.sleep, insight: null, challenge: null, skipped: true }); goNext(); }}
           />
         </StepShell>
       );
