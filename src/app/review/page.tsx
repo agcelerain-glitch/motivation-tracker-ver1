@@ -239,15 +239,32 @@ export default function ReviewPage() {
   const [notesAnalysis, setNotesAnalysis] = useState<NotesAnalysis | null>(null);
   const [analyzingNotes, setAnalyzingNotes] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
+  const [refreshingTrend, setRefreshingTrend] = useState(false);
+
+  const loadEntries = async (uid: string) => {
+    const snap = await getDocs(query(collection(db, 'users', uid, 'entries')));
+    return snap.docs
+      .map(d => d.data() as Entry)
+      .sort((a, b) => b.logicalDate.localeCompare(a.logicalDate));
+  };
+
+  const handleRefreshTrend = async () => {
+    if (!user || refreshingTrend) return;
+    setRefreshingTrend(true);
+    try {
+      const loaded = await loadEntries(user.uid);
+      setEntries(loaded);
+    } catch (err) {
+      console.error('傾向分析の更新エラー:', err);
+    } finally {
+      setRefreshingTrend(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'users', user.uid, 'entries'));
-    getDocs(q)
-      .then(snap => {
-        const loaded = snap.docs
-          .map(d => d.data() as Entry)
-          .sort((a, b) => b.logicalDate.localeCompare(a.logicalDate));
+    loadEntries(user.uid)
+      .then(loaded => {
         setEntries(loaded);
         setFetching(false);
       })
@@ -514,6 +531,8 @@ export default function ReviewPage() {
             totalEntries={totalEntries}
             currentThreshold={currentThreshold}
             nextThreshold={nextThreshold}
+            onRefresh={handleRefreshTrend}
+            refreshing={refreshingTrend}
           />
 
           {/* AI観察メモ */}

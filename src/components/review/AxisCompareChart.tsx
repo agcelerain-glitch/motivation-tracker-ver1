@@ -11,14 +11,40 @@ interface Props {
   totalEntries: number;
   currentThreshold: number;
   nextThreshold: number | null;
+  onRefresh: () => void;
+  refreshing: boolean;
 }
 
-export default function AxisCompareChart({ divergence, high, low, totalEntries, currentThreshold, nextThreshold }: Props) {
+function RefreshButton({ onClick, refreshing }: { onClick: () => void; refreshing: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={refreshing}
+      aria-label="傾向分析を更新"
+      style={{
+        background: 'none', border: 'none', cursor: refreshing ? 'default' : 'pointer',
+        color: refreshing ? COLORS.muted : COLORS.sprout,
+        fontSize: 13, padding: '2px 6px', borderRadius: 6, lineHeight: 1,
+        transition: 'color 0.15s',
+      }}
+    >
+      <span style={{
+        display: 'inline-block',
+        animation: refreshing ? 'spin 0.8s linear infinite' : 'none',
+      }}>↻</span>
+    </button>
+  );
+}
+
+export default function AxisCompareChart({ divergence, high, low, totalEntries, currentThreshold, nextThreshold, onRefresh, refreshing }: Props) {
   // 傾向なし（3回未満）
   if (currentThreshold === 0) {
     return (
       <section>
-        <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 8 }}>傾向分析</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', margin: 0 }}>傾向分析</h2>
+          <RefreshButton onClick={onRefresh} refreshing={refreshing} />
+        </div>
         <div style={{ background: COLORS.inkRaised, borderRadius: 10, padding: '16px 14px' }}>
           <p style={{ color: COLORS.muted, fontSize: 13, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.7, margin: 0 }}>
             あと{3 - totalEntries}回記録すると最初の傾向が見えます
@@ -45,7 +71,10 @@ export default function AxisCompareChart({ divergence, high, low, totalEntries, 
 
   return (
     <section>
-      <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 4 }}>傾向分析</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', margin: 0 }}>傾向分析</h2>
+        <RefreshButton onClick={onRefresh} refreshing={refreshing} />
+      </div>
       <p style={{ color: COLORS.sprout, fontSize: 11, fontFamily: 'Roboto Mono', margin: '0 0 12px' }}>
         直近{currentThreshold}回のデータより
       </p>
