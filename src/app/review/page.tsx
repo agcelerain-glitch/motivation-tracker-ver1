@@ -2,15 +2,15 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
 import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChartLine, faCalendarDays, faArrowLeft, faPenToSquare, faFaceMeh, faBullseye } from '@fortawesome/free-solid-svg-icons';
+import { faChartLine, faCalendarDays, faArrowLeft, faPenToSquare, faFaceMeh, faBullseye, faBrain, faRotate } from '@fortawesome/free-solid-svg-icons';
 import { COLORS, BAND_COLORS } from '@/config/design';
 import { AXES } from '@/config/axes';
-import { groupByHighLow, computeAxisDivergence } from '@/lib/analysis';
+import { groupByHighLow, computeAxisDivergence, getTrendStage } from '@/lib/analysis';
 import type { Entry } from '@/types/entry';
 import CalendarHeatmap from '@/components/review/CalendarHeatmap';
 import TrendChart from '@/components/review/TrendChart';
@@ -216,6 +216,16 @@ function EntryDetailContent({ entry }: { entry: Entry }) {
   );
 }
 
+interface UserProfile {
+  aiIncludeNotes?: boolean;
+  aiFeedbackEnabled?: boolean;
+}
+
+interface NotesAnalysis {
+  analysis: string;
+  generatedAt: { seconds: number } | null;
+}
+
 export default function ReviewPage() {
   const router = useRouter();
   const { user, loading } = useAuthState();
@@ -225,6 +235,10 @@ export default function ReviewPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [notesAnalysis, setNotesAnalysis] = useState<NotesAnalysis | null>(null);
+  const [analyzingNotes, setAnalyzingNotes] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -249,7 +263,45 @@ export default function ReviewPage() {
         setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as ReviewTask)));
       })
       .catch(err => console.error('タスク取得エラー:', err));
+
+    // プロファイルと既存のノート分析を取得
+    getDoc(doc(db, 'users', user.uid)).then(snap => {
+      if (snap.exists()) setProfile(snap.data() as UserProfile);
+    }).catch(err => console.error('プロファイル取得エラー:', err));
+
+    getDoc(doc(db, 'users', user.uid, 'feedbacks', 'notes-latest')).then(snap => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setNotesAnalysis({ analysis: d.analysis as string, generatedAt: d.generatedAt ?? null });
+      }
+    }).catch(() => {/* 未存在は正常 */});
   }, [user]);
+
+  const handleAnalyzeNotes = async () => {
+    if (!user) return;
+    setAnalyzingNotes(true);
+    setNotesError(null);
+    try {
+      const token = await user.getIdToken();
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? '';
+      const res = await fetch(`${backendUrl}/api/analyze-notes`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 403) {
+        setNotesError('設定でコメントのAI分析を有効にしてください。');
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as { analysis: string };
+      setNotesAnalysis({ analysis: data.analysis, generatedAt: null });
+    } catch (e) {
+      console.error('ノート分析エラー:', e);
+      setNotesError('分析の取得に失敗しました。しばらく後で再試行してください。');
+    } finally {
+      setAnalyzingNotes(false);
+    }
+  };
 
   const handleDayTap = (date: string) => {
     setSelectedDate(date);
@@ -274,7 +326,11 @@ export default function ReviewPage() {
   if (!user) { router.replace('/'); return null; }
 
   const hasEntries = entries.length > 0;
-  const { high, low } = hasEntries ? groupByHighLow(entries) : { high: [], low: [] };
+  const totalEntries = entries.length;
+  const { currentThreshold, nextThreshold } = getTrendStage(totalEntries);
+  const { high, low } = currentThreshold > 0
+    ? groupByHighLow(entries, 'satisfaction', currentThreshold)
+    : { high: [], low: [] };
   const divergence = high.length > 0 && low.length > 0 ? computeAxisDivergence(high, low) : [];
 
   return (
@@ -451,9 +507,78 @@ export default function ReviewPage() {
           </section>
 
           {/* 傾向分析 */}
-          {divergence.length > 0 && (
-            <AxisCompareChart divergence={divergence} high={high} low={low} />
-          )}
+          <AxisCompareChart
+            divergence={divergence}
+            high={high}
+            low={low}
+            totalEntries={totalEntries}
+            currentThreshold={currentThreshold}
+            nextThreshold={nextThreshold}
+          />
+
+          {/* AI観察メモ */}
+          <section>
+            <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FontAwesomeIcon icon={faBrain} style={{ color: COLORS.sprout, fontSize: 14 }} />
+              AI観察メモ
+            </h2>
+            <div style={{ background: COLORS.inkRaised, borderRadius: 12, padding: '14px 16px' }}>
+              {!profile?.aiIncludeNotes ? (
+                <div>
+                  <p style={{ color: COLORS.muted, fontSize: 13, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.7, margin: '0 0 10px' }}>
+                    設定でコメントのAI分析を有効にすると、気づきや挑戦の記録からAIが傾向を観察します。
+                  </p>
+                  <button
+                    onClick={() => router.push('/settings')}
+                    style={{ background: 'transparent', border: `1px solid ${COLORS.sprout}`, color: COLORS.sprout, borderRadius: 8, padding: '7px 16px', fontSize: 12, cursor: 'pointer', fontFamily: 'Zen Kaku Gothic New' }}
+                  >
+                    設定を開く →
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  {notesAnalysis ? (
+                    <div style={{ marginBottom: 12 }}>
+                      <p style={{ color: COLORS.chalk, fontSize: 13, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.7, margin: '0 0 6px' }}>
+                        {notesAnalysis.analysis}
+                      </p>
+                      {notesAnalysis.generatedAt && (
+                        <p style={{ color: COLORS.muted, fontSize: 10, fontFamily: 'Roboto Mono', margin: 0 }}>
+                          {new Date(notesAnalysis.generatedAt.seconds * 1000).toLocaleDateString('ja-JP')} 生成
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ color: COLORS.muted, fontSize: 13, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.7, margin: '0 0 12px' }}>
+                      まだ分析がありません。ボタンを押すと最新の記録から傾向を観察します。
+                    </p>
+                  )}
+                  {notesError && (
+                    <p style={{ color: COLORS.alert, fontSize: 12, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 8px' }}>
+                      {notesError}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleAnalyzeNotes}
+                    disabled={analyzingNotes}
+                    style={{
+                      background: 'transparent',
+                      border: `1px solid ${analyzingNotes ? COLORS.muted : COLORS.sprout}`,
+                      color: analyzingNotes ? COLORS.muted : COLORS.sprout,
+                      borderRadius: 8, padding: '7px 14px', fontSize: 12, cursor: analyzingNotes ? 'default' : 'pointer',
+                      fontFamily: 'Zen Kaku Gothic New', display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faRotate} style={{ fontSize: 11 }} />
+                    {analyzingNotes ? '観察中…' : '分析を更新する'}
+                  </button>
+                  <p style={{ color: COLORS.muted, fontSize: 10, fontFamily: 'Zen Kaku Gothic New', margin: '8px 0 0', lineHeight: 1.5 }}>
+                    ※ 気づきと挑戦のテキストをAIに送信します
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
         </>
       )}
     </div>

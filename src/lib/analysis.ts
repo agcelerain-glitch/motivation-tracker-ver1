@@ -8,11 +8,34 @@ export interface AxisDivergenceResult {
   diff: number;
 }
 
+export const TREND_THRESHOLDS = [3, 7, 14, 28] as const;
+
+export interface TrendStage {
+  currentThreshold: number;
+  nextThreshold: number | null;
+}
+
+/** 記録回数から現在の傾向段階と次の段階を返す */
+export function getTrendStage(n: number): TrendStage {
+  for (let i = TREND_THRESHOLDS.length - 1; i >= 0; i--) {
+    if (n >= TREND_THRESHOLDS[i]) {
+      return {
+        currentThreshold: TREND_THRESHOLDS[i],
+        nextThreshold: (TREND_THRESHOLDS[i + 1] as number | undefined) ?? null,
+      };
+    }
+  }
+  return { currentThreshold: 0, nextThreshold: 3 };
+}
+
 export function groupByHighLow(
   entries: Entry[],
   field: 'satisfaction' | 'achievement' = 'satisfaction',
+  limit?: number,
 ): { high: Entry[]; low: Entry[] } {
-  const sorted = entries
+  // entries は日付降順でソート済みと仮定。limit 件だけ使う
+  const target = limit ? entries.slice(0, limit) : entries;
+  const sorted = target
     .filter(e => e[field] !== null && e[field] !== undefined)
     .sort((a, b) => (b[field] ?? 0) - (a[field] ?? 0));
 
