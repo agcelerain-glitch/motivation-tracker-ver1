@@ -177,6 +177,22 @@ export default function SettingsPage() {
               毎週日曜日にフィードバックが届きます。<br />
               上の「AIフィードバック」がオンになっているか確認してください。
             </p>
+            {/* 公式LINEを開くリンク */}
+            <a
+              href="https://lin.ee/sevAagD"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'transparent', border: '1px solid #06C75560',
+                color: '#06C755', borderRadius: 8, padding: '8px 14px',
+                fontSize: 12, fontFamily: 'Zen Kaku Gothic New', textDecoration: 'none',
+                alignSelf: 'flex-start',
+              }}
+            >
+              <FontAwesomeIcon icon={faLine} style={{ fontSize: 14 }} />
+              公式LINEを開く
+            </a>
             <button
               onClick={handleUnlink}
               disabled={unlinking}
@@ -194,11 +210,32 @@ export default function SettingsPage() {
         ) : (
           /* 未連携 */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ color: COLORS.muted, fontSize: 12, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.7 }}>
-              ① 公式LINEアカウントを友だち追加する<br />
-              ② 下のボタンで6桁のコードを発行する<br />
-              ③ LINEのトークにコードを送信する
-            </p>
+            {/* ステップ説明 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ color: COLORS.muted, fontSize: 12, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.7 }}>
+                ① 公式LINEアカウントを友だち追加する
+              </p>
+              {/* 公式LINEジャンプボタン */}
+              <a
+                href="https://lin.ee/sevAagD"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 10,
+                  background: '#06C755', color: '#fff', borderRadius: 12,
+                  padding: '13px 20px', fontSize: 15, fontFamily: 'Zen Kaku Gothic New',
+                  fontWeight: 700, textDecoration: 'none', alignSelf: 'flex-start',
+                  boxShadow: '0 2px 12px #06C75540',
+                }}
+              >
+                <FontAwesomeIcon icon={faLine} style={{ fontSize: 20 }} />
+                友だち追加
+              </a>
+              <p style={{ color: COLORS.muted, fontSize: 12, margin: 0, fontFamily: 'Zen Kaku Gothic New', lineHeight: 1.7 }}>
+                ② 下のボタンで6桁のコードを発行する<br />
+                ③ LINEのトークにコードを送信する
+              </p>
+            </div>
 
             {lineCode && !isExpired ? (
               /* コード表示 */

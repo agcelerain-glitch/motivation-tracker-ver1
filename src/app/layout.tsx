@@ -30,10 +30,96 @@ const robotoMono = Roboto_Mono({
   display: 'swap',
 });
 
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
 export const metadata: Metadata = {
-  title: 'モチトラ — 今日の半歩',
-  description: '日々の行動と内面状態を記録し、自己分析できるモバイルWebアプリ',
+  metadataBase: new URL(APP_URL),
+
+  // ── タイトル・説明文（Google検索向け） ───────────────────────
+  title: {
+    default: 'モチトラ — 今日の半歩',
+    template: '%s | モチトラ',
+  },
+  description:
+    '毎日の行動と内面状態を記録して、なぜ続いたか・なぜ続かなかったかを自己分析できるモバイルWebアプリ。達成度・満足度・感情・8つの両極軸スコアを記録し、傾向をグラフで見える化します。',
+  keywords: [
+    'モチベーション記録', '習慣記録', '自己分析', '行動記録アプリ',
+    '日記アプリ', '振り返り', 'セルフモニタリング', 'モチトラ',
+  ],
+  applicationName: 'モチトラ',
+  authors: [{ name: 'モチトラ' }],
+  creator: 'モチトラ',
+  publisher: 'モチトラ',
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-snippet': -1,
+      'max-image-preview': 'large',
+    },
+  },
+
+  // ── ファビコン・アイコン ──────────────────────────────────────
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+  },
+
+  // ── PWA ─────────────────────────────────────────────────────
   manifest: '/manifest.json',
+
+  // ── iOS Safari ホーム画面追加 ─────────────────────────────────
+  appleWebApp: {
+    capable: true,
+    title: 'モチトラ',
+    statusBarStyle: 'black-translucent',
+  },
+
+  // ── OGP（SNSシェア・Search Console向け） ──────────────────────
+  openGraph: {
+    type: 'website',
+    locale: 'ja_JP',
+    url: APP_URL,
+    siteName: 'モチトラ',
+    title: 'モチトラ — 今日の半歩',
+    description:
+      '毎日の行動と内面状態を記録して自己分析できるモバイルWebアプリ。達成度・満足度・感情・8軸スコアを記録し、傾向を見える化します。',
+    images: [
+      {
+        url: '/android-chrome-512x512.png',
+        width: 512,
+        height: 512,
+        alt: 'モチトラ アイコン',
+      },
+    ],
+  },
+
+  // ── Twitter/X カード ──────────────────────────────────────────
+  twitter: {
+    card: 'summary',
+    title: 'モチトラ — 今日の半歩',
+    description: '毎日の行動と内面状態を記録して自己分析できるモバイルWebアプリ',
+    images: ['/android-chrome-512x512.png'],
+  },
+
+  // ── その他（Android Chrome / Windows） ───────────────────────
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'msapplication-TileColor': '#16182B',
+    'msapplication-TileImage': '/android-chrome-192x192.png',
+  },
 };
 
 export const viewport: Viewport = {
