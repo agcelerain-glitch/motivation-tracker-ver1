@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { collection, query, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
@@ -265,6 +265,9 @@ export default function ReviewPage() {
   const [refreshingTrend, setRefreshingTrend] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<number>(0);
   const [reloading, setReloading] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
+  const pendingPeriodRef = useRef<number | null>(null);
+  const retryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadEntries = async (uid: string) => {
     const snap = await getDocs(query(collection(db, 'users', uid, 'entries')));
@@ -347,9 +350,12 @@ export default function ReviewPage() {
     }).catch(() => {/* 未存在は正常 */});
   }, [user]);
 
-  const handleAnalyzeNotes = async () => {
+  const doFetchAnalysis = useCallback(async (period: number) => {
     if (!user) return;
-    const period = selectedPeriod > 0 ? selectedPeriod : getTrendStage(entries.length).currentThreshold;
+    // 進行中のカウントダウンをキャンセル
+    if (retryIntervalRef.current) { clearInterval(retryIntervalRef.current); retryIntervalRef.current = null; }
+    pendingPeriodRef.current = null;
+    setRetryCountdown(null);
     setAnalyzingNotes(true);
     setNotesError(null);
     try {
@@ -364,6 +370,22 @@ export default function ReviewPage() {
         setNotesError('設定でコメントのAI分析を有効にしてください。');
         return;
       }
+      if (res.status === 429) {
+        const body = await res.json() as { retryAfterMs?: number };
+        const waitSec = Math.ceil((body.retryAfterMs ?? 42000) / 1000);
+        pendingPeriodRef.current = period;
+        setRetryCountdown(waitSec);
+        retryIntervalRef.current = setInterval(() => {
+          setRetryCountdown(prev => {
+            if (prev === null || prev <= 1) {
+              clearInterval(retryIntervalRef.current!); retryIntervalRef.current = null;
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { analysis: string };
       setNotesAnalysis({ analysis: data.analysis, generatedAt: null });
@@ -373,6 +395,20 @@ export default function ReviewPage() {
     } finally {
       setAnalyzingNotes(false);
     }
+  }, [user]);
+
+  // カウントダウンが 0 になったら自動再試行
+  useEffect(() => {
+    if (retryCountdown !== null) return;
+    const period = pendingPeriodRef.current;
+    if (period === null) return;
+    pendingPeriodRef.current = null;
+    doFetchAnalysis(period);
+  }, [retryCountdown, doFetchAnalysis]);
+
+  const handleAnalyzeNotes = () => {
+    const period = selectedPeriod > 0 ? selectedPeriod : getTrendStage(entries.length).currentThreshold;
+    doFetchAnalysis(period);
   };
 
   const handleDayTap = (date: string) => {
@@ -652,14 +688,22 @@ export default function ReviewPage() {
                       {notesError}
                     </p>
                   )}
+                  {retryCountdown !== null && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <FontAwesomeIcon icon={faRotate} style={{ fontSize: 11, color: '#E8893D', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                      <span style={{ color: '#E8893D', fontSize: 12, fontFamily: 'Zen Kaku Gothic New' }}>
+                        レート制限中 — {retryCountdown}秒後に自動再試行します
+                      </span>
+                    </div>
+                  )}
                   <button
                     onClick={handleAnalyzeNotes}
-                    disabled={analyzingNotes}
+                    disabled={analyzingNotes || retryCountdown !== null}
                     style={{
                       background: 'transparent',
-                      border: `1px solid ${analyzingNotes ? COLORS.muted : COLORS.sprout}`,
-                      color: analyzingNotes ? COLORS.muted : COLORS.sprout,
-                      borderRadius: 8, padding: '7px 14px', fontSize: 12, cursor: analyzingNotes ? 'default' : 'pointer',
+                      border: `1px solid ${(analyzingNotes || retryCountdown !== null) ? COLORS.muted : COLORS.sprout}`,
+                      color: (analyzingNotes || retryCountdown !== null) ? COLORS.muted : COLORS.sprout,
+                      borderRadius: 8, padding: '7px 14px', fontSize: 12, cursor: (analyzingNotes || retryCountdown !== null) ? 'default' : 'pointer',
                       fontFamily: 'Zen Kaku Gothic New', display: 'flex', alignItems: 'center', gap: 6,
                     }}
                   >
