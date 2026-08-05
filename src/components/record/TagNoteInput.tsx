@@ -33,7 +33,7 @@ export default function TagNoteInput({ presets, value, onChange, yesterdayTomorr
 
       {yesterdayTomorrow && (
         <div style={{ background: '#2A2D45', borderRadius: 8, padding: '8px 12px' }}>
-          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px' }}>昨日のやること</p>
+          <p style={{ color: COLORS.muted, fontSize: 11, margin: '0 0 6px' }}>前回のやること</p>
           <button
             onClick={() => toggleTag(yesterdayTomorrow)}
             style={{

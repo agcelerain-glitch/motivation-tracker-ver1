@@ -6,8 +6,8 @@ import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from '@/lib/hooks/useAuthState';
 import { useDraftStore } from '@/store/draftStore';
-import { getLogicalDate, previousLogicalDate } from '@/lib/date';
-import { getEntry, upsertEntry } from '@/lib/firestore/entries';
+import { getLogicalDate } from '@/lib/date';
+import { getLatestTomorrow, upsertEntry } from '@/lib/firestore/entries';
 import { AXES } from '@/config/axes';
 import { DID_PRESETS, DIDNT_PRESETS } from '@/config/tagPresets';
 import { COLORS } from '@/config/design';
@@ -39,8 +39,7 @@ export default function RecordPage() {
 
   useEffect(() => {
     if (!user) return;
-    const prev = previousLogicalDate(getLogicalDate());
-    getEntry(user.uid, prev).then(e => setPrevTomorrow(e?.tomorrow ?? null));
+    getLatestTomorrow(user.uid, getLogicalDate()).then(t => setPrevTomorrow(t));
   }, [user]);
 
   const goNext = () => draft.setStep(draft.currentStep + 1);

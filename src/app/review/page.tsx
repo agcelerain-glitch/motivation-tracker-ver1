@@ -263,6 +263,7 @@ export default function ReviewPage() {
   const [analyzingNotes, setAnalyzingNotes] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
   const [refreshingTrend, setRefreshingTrend] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(0);
 
   const loadEntries = async (uid: string) => {
     const snap = await getDocs(query(collection(db, 'users', uid, 'entries')));
@@ -289,6 +290,8 @@ export default function ReviewPage() {
     loadEntries(user.uid)
       .then(loaded => {
         setEntries(loaded);
+        const { currentThreshold } = getTrendStage(loaded.length);
+        setSelectedPeriod(p => p > 0 ? p : currentThreshold);
         setFetching(false);
       })
       .catch(err => {
@@ -367,9 +370,11 @@ export default function ReviewPage() {
 
   const hasEntries = entries.length > 0;
   const totalEntries = entries.length;
-  const { currentThreshold, nextThreshold } = getTrendStage(totalEntries);
-  const { high, low } = currentThreshold > 0
-    ? groupByHighLow(entries, 'satisfaction', currentThreshold)
+  const { currentThreshold } = getTrendStage(totalEntries);
+  const availablePeriods = [3, 7, 14, 28].filter(n => n <= totalEntries);
+  const effectivePeriod = selectedPeriod > 0 ? selectedPeriod : currentThreshold;
+  const { high, low } = effectivePeriod > 0
+    ? groupByHighLow(entries, 'satisfaction', effectivePeriod)
     : { high: [], low: [] };
   const divergence = high.length > 0 && low.length > 0 ? computeAxisDivergence(high, low) : [];
   // 全記録を使って相関を計算（多いほど精度が上がる）
@@ -555,8 +560,9 @@ export default function ReviewPage() {
             high={high}
             low={low}
             totalEntries={totalEntries}
-            currentThreshold={currentThreshold}
-            nextThreshold={nextThreshold}
+            selectedPeriod={effectivePeriod}
+            availablePeriods={availablePeriods}
+            onPeriodChange={setSelectedPeriod}
             onRefresh={handleRefreshTrend}
             refreshing={refreshingTrend}
           />

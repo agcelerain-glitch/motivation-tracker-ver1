@@ -71,7 +71,7 @@ export default function TomorrowStep({ value, prevTomorrow, onChange, onNext, on
           borderRadius: 10, padding: '10px 14px',
         }}>
           <p style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Zen Kaku Gothic New', margin: '0 0 4px' }}>
-            昨日の予定
+            前回のやること
           </p>
           <p style={{ color: COLORS.chalk, fontSize: 14, fontFamily: 'Zen Kaku Gothic New', margin: 0, lineHeight: 1.6 }}>
             {prevTomorrow.text}
@@ -101,7 +101,7 @@ export default function TomorrowStep({ value, prevTomorrow, onChange, onNext, on
             textAlign: 'left',
           }}
         >
-          昨日の予定をそのまま引き継ぐ
+          前回のやることをそのまま引き継ぐ
         </button>
       )}
 
