@@ -264,6 +264,7 @@ export default function ReviewPage() {
   const [notesError, setNotesError] = useState<string | null>(null);
   const [refreshingTrend, setRefreshingTrend] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<number>(0);
+  const [reloading, setReloading] = useState(false);
 
   const loadEntries = async (uid: string) => {
     const snap = await getDocs(query(collection(db, 'users', uid, 'entries')));
@@ -282,6 +283,32 @@ export default function ReviewPage() {
       console.error('傾向分析の更新エラー:', err);
     } finally {
       setRefreshingTrend(false);
+    }
+  };
+
+  const handlePageReload = async () => {
+    if (!user || reloading) return;
+    setReloading(true);
+    try {
+      const [loaded, tasksSnap, profileSnap, notesSnap] = await Promise.all([
+        loadEntries(user.uid),
+        getDocs(query(collection(db, 'users', user.uid, 'tasks'), orderBy('createdAt', 'desc'))),
+        getDoc(doc(db, 'users', user.uid)),
+        getDoc(doc(db, 'users', user.uid, 'feedbacks', 'notes-latest')),
+      ]);
+      setEntries(loaded);
+      const { currentThreshold } = getTrendStage(loaded.length);
+      setSelectedPeriod(p => p > 0 ? p : currentThreshold);
+      setTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data() } as ReviewTask)));
+      if (profileSnap.exists()) setProfile(profileSnap.data() as UserProfile);
+      if (notesSnap.exists()) {
+        const d = notesSnap.data();
+        setNotesAnalysis({ analysis: d.analysis as string, generatedAt: d.generatedAt ?? null });
+      }
+    } catch (err) {
+      console.error('ページの更新エラー:', err);
+    } finally {
+      setReloading(false);
     }
   };
 
@@ -322,6 +349,7 @@ export default function ReviewPage() {
 
   const handleAnalyzeNotes = async () => {
     if (!user) return;
+    const period = selectedPeriod > 0 ? selectedPeriod : getTrendStage(entries.length).currentThreshold;
     setAnalyzingNotes(true);
     setNotesError(null);
     try {
@@ -329,7 +357,8 @@ export default function ReviewPage() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? '';
       const res = await fetch(`${backendUrl}/api/analyze-notes`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period }),
       });
       if (res.status === 403) {
         setNotesError('設定でコメントのAI分析を有効にしてください。');
@@ -393,9 +422,17 @@ export default function ReviewPage() {
         >
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        <h1 style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0 }}>
+        <h1 style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0, flex: 1 }}>
           分析・振り返り
         </h1>
+        <button
+          onClick={handlePageReload}
+          disabled={reloading}
+          aria-label="ページを更新"
+          style={{ background: 'none', border: 'none', color: reloading ? '#A06020' : '#E8893D', fontSize: 18, cursor: reloading ? 'default' : 'pointer', padding: '4px 8px', borderRadius: 6 }}
+        >
+          <FontAwesomeIcon icon={faRotate} style={{ display: 'inline-block', animation: reloading ? 'spin 0.8s linear infinite' : 'none' }} />
+        </button>
       </header>
 
       {/* エラー表示 */}
@@ -575,6 +612,9 @@ export default function ReviewPage() {
             <h2 style={{ color: COLORS.chalk, fontSize: 16, fontFamily: 'Shippori Mincho', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <FontAwesomeIcon icon={faBrain} style={{ color: COLORS.sprout, fontSize: 14 }} />
               AI観察メモ
+              <span style={{ color: COLORS.muted, fontSize: 11, fontFamily: 'Roboto Mono', fontWeight: 400 }}>
+                ({effectivePeriod}回)
+              </span>
             </h2>
             <div style={{ background: COLORS.inkRaised, borderRadius: 12, padding: '14px 16px' }}>
               {!profile?.aiIncludeNotes ? (

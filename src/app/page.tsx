@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faRightFromBracket, faPenToSquare, faChartLine,
   faBullseye, faGear, faTriangleExclamation,
-  faCircleCheck, faRotateLeft,
+  faCircleCheck, faRotateLeft, faRotate,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 import type { Entry } from '@/types/entry';
@@ -39,6 +39,7 @@ export default function HomePage() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [tasks, setTasks] = useState<ActiveTask[]>([]);
   const [prevEntry, setPrevEntry] = useState<Entry | null>(null);
+  const [reloading, setReloading] = useState(false);
   const configChecks = checkFirebaseConfig();
   const configOk = allConfigOk();
 
@@ -127,6 +128,27 @@ export default function HomePage() {
     sessionStorage.removeItem('selectedTaskId');
     sessionStorage.removeItem('selectedTaskTitle');
     router.push('/record');
+  };
+
+  const handlePageReload = async () => {
+    if (!user || reloading) return;
+    setReloading(true);
+    try {
+      const today = getLogicalDate();
+      const prev = previousLogicalDate(today);
+      const [entry, prevE, tasksSnap] = await Promise.all([
+        getEntry(user.uid, today),
+        getEntry(user.uid, prev),
+        getDocs(query(collection(db, 'users', user.uid, 'tasks'), where('status', '==', 'active'))),
+      ]);
+      setTodayEntry(entry ?? null);
+      setPrevEntry(prevE ?? null);
+      setTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data() } as ActiveTask)));
+    } catch (err) {
+      console.error('ページの更新エラー:', err);
+    } finally {
+      setReloading(false);
+    }
   };
 
   if (loading) {
@@ -230,13 +252,23 @@ export default function HomePage() {
             {today} · {user.displayName ?? user.email}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 18, cursor: 'pointer', padding: 8, borderRadius: 8 }}
-          title="ログアウト"
-        >
-          <FontAwesomeIcon icon={faRightFromBracket} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={handlePageReload}
+            disabled={reloading}
+            aria-label="ページを更新"
+            style={{ background: 'none', border: 'none', color: reloading ? '#A06020' : '#E8893D', fontSize: 18, cursor: reloading ? 'default' : 'pointer', padding: 8, borderRadius: 8 }}
+          >
+            <FontAwesomeIcon icon={faRotate} style={{ display: 'inline-block', animation: reloading ? 'spin 0.8s linear infinite' : 'none' }} />
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 18, cursor: 'pointer', padding: 8, borderRadius: 8 }}
+            title="ログアウト"
+          >
+            <FontAwesomeIcon icon={faRightFromBracket} />
+          </button>
+        </div>
       </header>
 
       {/* 進行中タスク（表示のみ・常時点灯） */}

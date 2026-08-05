@@ -11,7 +11,7 @@ import { COLORS } from '@/config/design';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft, faToggleOn, faToggleOff, faLink, faLinkSlash,
-  faCopy, faCheck, faRotateRight,
+  faCopy, faCheck, faRotateRight, faRotate,
 } from '@fortawesome/free-solid-svg-icons';
 import { faLine } from '@fortawesome/free-brands-svg-icons';
 
@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const [lineCodeExpiry, setLineCodeExpiry] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
+  const [reloading, setReloading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -88,6 +89,19 @@ export default function SettingsPage() {
 
   const isExpired = lineCodeExpiry ? lineCodeExpiry < new Date() : false;
 
+  const handlePageReload = async () => {
+    if (!user || reloading) return;
+    setReloading(true);
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (snap.exists()) setProfile(p => ({ ...p, ...snap.data() } as Profile));
+    } catch (err) {
+      console.error('ページの更新エラー:', err);
+    } finally {
+      setReloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: '100dvh', background: COLORS.ink, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -121,7 +135,15 @@ export default function SettingsPage() {
         <button onClick={() => router.push('/')} style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 18, cursor: 'pointer', padding: 4 }}>
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        <h1 style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0 }}>⚙️ 設定</h1>
+        <h1 style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0, flex: 1 }}>⚙️ 設定</h1>
+        <button
+          onClick={handlePageReload}
+          disabled={reloading}
+          aria-label="ページを更新"
+          style={{ background: 'none', border: 'none', color: reloading ? '#A06020' : '#E8893D', fontSize: 18, cursor: reloading ? 'default' : 'pointer', padding: '4px 8px', borderRadius: 6 }}
+        >
+          <FontAwesomeIcon icon={faRotate} style={{ display: 'inline-block', animation: reloading ? 'spin 0.8s linear infinite' : 'none' }} />
+        </button>
       </header>
 
       {/* アカウント */}

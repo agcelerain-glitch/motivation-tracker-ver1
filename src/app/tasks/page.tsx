@@ -7,6 +7,8 @@ import { db } from '@/lib/firebase';
 import { useAuthState } from '@/lib/hooks/useAuthState';
 import { useRouter } from 'next/navigation';
 import { COLORS } from '@/config/design';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faRotate } from '@fortawesome/free-solid-svg-icons';
 
 interface Task {
   id: string;
@@ -44,6 +46,7 @@ export default function TasksPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: '', why: '', deadline: '' });
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reloading, setReloading] = useState(false);
 
   const loadTasks = (uid: string) => {
     const q = query(collection(db, 'users', uid, 'tasks'), orderBy('createdAt', 'desc'));
@@ -119,6 +122,24 @@ export default function TasksPage() {
     );
   }
   if (!user) { router.replace('/'); return null; }
+
+  const handlePageReload = async () => {
+    if (reloading) return;
+    setReloading(true);
+    try {
+      const q = query(collection(db, 'users', user.uid, 'tasks'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      const now = Date.now();
+      setTasks(snap.docs.map(d => {
+        const data = d.data() as Omit<Task, 'id' | 'daysLeft'>;
+        return { id: d.id, ...data, daysLeft: data.deadline ? Math.ceil((new Date(data.deadline).getTime() - now) / 86400000) : null };
+      }));
+    } catch (err) {
+      console.error('ページの更新エラー:', err);
+    } finally {
+      setReloading(false);
+    }
+  };
 
   const activeTasks = tasks.filter(t => t.status === 'active');
   const pausedTasks = tasks.filter(t => t.status === 'paused');
@@ -275,7 +296,15 @@ export default function TasksPage() {
     <div style={{ minHeight: '100dvh', background: COLORS.ink, padding: '24px 16px 40px', display: 'flex', flexDirection: 'column', gap: 24 }}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => router.push('/')} style={{ background: 'none', border: 'none', color: COLORS.muted, fontSize: 22, cursor: 'pointer' }}>←</button>
-        <h1 style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0 }}>タスク・目標</h1>
+        <h1 style={{ color: COLORS.chalk, fontSize: 20, fontFamily: 'Shippori Mincho', margin: 0, flex: 1 }}>タスク・目標</h1>
+        <button
+          onClick={handlePageReload}
+          disabled={reloading}
+          aria-label="ページを更新"
+          style={{ background: 'none', border: 'none', color: reloading ? '#A06020' : '#E8893D', fontSize: 18, cursor: reloading ? 'default' : 'pointer', padding: '4px 8px', borderRadius: 6 }}
+        >
+          <FontAwesomeIcon icon={faRotate} style={{ display: 'inline-block', animation: reloading ? 'spin 0.8s linear infinite' : 'none' }} />
+        </button>
       </header>
 
       {/* 新規追加フォーム */}
